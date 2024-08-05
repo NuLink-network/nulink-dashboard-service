@@ -8,7 +8,10 @@ import javax.persistence.Table;
 
 @Data
 @Entity
-@Table(name = "set_living_ratio")
+@Table(name = "set_living_ratio", indexes = {
+        @javax.persistence.Index(name = "epoch_index", columnList = "epoch"),
+        @javax.persistence.Index(name = "token_id_index", columnList = "token_id")
+})
 public class SetLivingRatio extends BaseEntity{
 
     @Column(name = "tx_hash")
@@ -16,6 +19,9 @@ public class SetLivingRatio extends BaseEntity{
 
     @Column(name = "epoch", unique = true)
     private String epoch;
+
+    @Column(name = "token_id")
+    private String tokenId;
 
     @Column(name = "set_living_ratio")
     private boolean setLivingRatio;

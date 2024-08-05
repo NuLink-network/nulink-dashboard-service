@@ -3,7 +3,6 @@ package com.nulink.livingratio.controller;
 import com.nulink.livingratio.entity.StakeRewardOverview;
 import com.nulink.livingratio.service.GridStakeRewardService;
 import com.nulink.livingratio.service.StakeRewardOverviewService;
-import com.nulink.livingratio.service.PersonalStakeService;
 import com.nulink.livingratio.utils.Web3jUtils;
 import com.nulink.livingratio.vo.BaseResponse;
 import io.swagger.annotations.Api;
@@ -24,7 +23,7 @@ public class StakeRewardOverviewController {
     private final Web3jUtils web3jUtils;
 
     public StakeRewardOverviewController(StakeRewardOverviewService stakeRewardOverviewService,
-                                         PersonalStakeService stakeService, GridStakeRewardService gridStakeRewardService,
+                                          GridStakeRewardService gridStakeRewardService,
                                          Web3jUtils web3jUtils) {
         this.stakeRewardOverviewService = stakeRewardOverviewService;
         this.gridStakeRewardService = gridStakeRewardService;

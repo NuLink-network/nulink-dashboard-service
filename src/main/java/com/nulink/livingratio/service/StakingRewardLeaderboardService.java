@@ -56,7 +56,7 @@ public class StakingRewardLeaderboardService {
     private static boolean updateLeaderboardTaskFlag = false;
 
     @Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
+    //@Scheduled(cron = "0 0/1 * * * ? ")
     public void updateLeaderboard(){
         synchronized (updateLeaderboardTaskKey) {
             if (StakingRewardLeaderboardService.updateLeaderboardTaskFlag) {

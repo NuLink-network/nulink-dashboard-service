@@ -57,10 +57,7 @@ public class NodePoolMapSingleton {
 
     @PostConstruct
     private void initShareMap() {
-        if (sharedMap == null) {
-            sharedMap = new ConcurrentHashMap<>();
-        }
         List<CreateNodePoolEvent> nodePoolEvents = createNodePoolEventService.findAll();
-        nodePoolEvents.forEach(nodePoolEvent -> sharedMap.put(nodePoolEvent.getNodePoolAddress(), nodePoolEvent));
+        nodePoolEvents.forEach(nodePoolEvent -> getSharedMap().put(nodePoolEvent.getNodePoolAddress(), nodePoolEvent));
     }
 }

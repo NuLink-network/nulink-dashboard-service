@@ -11,12 +11,15 @@ spring:
     host: localhost
     database: 2
     connect-timeout: 5000
+    password: Nulink@2023Redis
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:mysql://127.0.0.1:3306/staking?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://127.0.0.1:5306/nulink_dashboard?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    #url: jdbc:mysql://8.219.11.39:5306/nulink_dashboard?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: root
-    password: 123456
+    #password: 123456
+    password: NuLink@2023
     hikari:
       minimum-idle: 5
       idle-timeout: 600000
@@ -40,21 +43,21 @@ spring:
     open-in-view: false
 
 contracts:
-  start: 36261400
+  start: 42557026
   step: 500
   enabled: true
   contractList:
     -
       name: 'NodePoolFactory' # CreateNodePool
-      address: '0x08e64D68959147097DEC69F14f616185194E081F'
+      address: '0xFc832266A4485aF55447fD519827130C5C3B3564'
       enabled: true
     -
       name: 'NodePoolStakingManager' # OperatorBonded
-      address: '0xE0Ae95b1ce3554358BaFb6ec0abeD89fc4235209'
+      address: '0x7422a2938A29E3E2e82DD0Ab118061797e75Deb9'
       enabled: true
     -
       name: 'NuLinkStakingSetting'
-      address: '0x8f7F7d0e6300Fce1dd24D0c50292e48f2bB4c2Ad'
+      address: '0xc5b9384d4b3893f4A47E5a1fe7936Dacd5EBE2Dc'
       enabled: true
 
 web3j:

@@ -1,19 +1,22 @@
 package com.nulink.livingratio.controller;
 
-import com.nulink.livingratio.entity.GridStakeReward;
 import com.nulink.livingratio.entity.GridStakingDetail;
 import com.nulink.livingratio.service.GridStakingDetailService;
 import com.nulink.livingratio.utils.RedisService;
 import com.nulink.livingratio.vo.BaseResponse;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Api(tags = "Grid Staking Detail")
 @RestController
 @RequestMapping("gridStakingDetail")
+@ConditionalOnProperty(value = "controller.enabled", havingValue = "true")
 public class GridStakingDetailController {
 
     private final GridStakingDetailService gridStakingDetailService;
@@ -25,7 +28,7 @@ public class GridStakingDetailController {
         this.redisService = redisService;
     }
 
-    @ApiOperation(value = "Stake Reward detail")
+    @ApiOperation(value = "Staking Reward detail by tokenId")
     @GetMapping("page")
     public BaseResponse<Page<GridStakingDetail>> findStakeRewardPage(@RequestParam(value = "epoch") String epoch,
                                                                      @RequestParam(value = "tokenId") String tokenId,
@@ -36,4 +39,9 @@ public class GridStakingDetailController {
         return BaseResponse.success(gridStakingDetailService.findPage(epoch, tokenId, pageSize, pageNum, orderBy, sorted));
     }
 
+    /*@ApiOperation(value = "User Staking Overview")
+    @GetMapping("userStakingOverview")
+    public BaseResponse<UserStakingOverviewDTO> userStakingOverview(@RequestParam(value = "address") String address) {
+        return BaseResponse.success(gridStakingDetailService.userStakingOverview(address));
+    }*/
 }

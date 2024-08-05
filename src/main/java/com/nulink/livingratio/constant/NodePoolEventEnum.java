@@ -1,5 +1,8 @@
 package com.nulink.livingratio.constant;
 
+import lombok.Getter;
+
+@Getter
 public enum NodePoolEventEnum {
 
     STAKING("STAKING"),
@@ -16,7 +19,4 @@ public enum NodePoolEventEnum {
         this.name = name;
     }
 
-    public String getName() {
-        return name;
-    }
 }

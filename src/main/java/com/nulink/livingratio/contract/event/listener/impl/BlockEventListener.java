@@ -2,6 +2,7 @@ package com.nulink.livingratio.contract.event.listener.impl;
 
 import com.nulink.livingratio.config.ContractsConfig;
 import com.nulink.livingratio.contract.event.listener.consumer.BondEventHandler;
+import com.nulink.livingratio.contract.event.listener.consumer.CreateNodePoolEventHandler;
 import com.nulink.livingratio.contract.event.listener.consumer.NodePoolEventsHandler;
 import com.nulink.livingratio.contract.event.listener.filter.events.ContractsEventEnum;
 import com.nulink.livingratio.contract.event.listener.filter.events.impl.ContractsEventBuilder;
@@ -36,7 +37,7 @@ public class BlockEventListener {
 
     public static Logger logger = LoggerFactory.getLogger(BlockEventListener.class);
 
-    private final static BigInteger STEP = new BigInteger("500");
+    private final static BigInteger STEP = new BigInteger("10");
 
     public static final String BLOCK_CONTRACT_FLAG = "BLOCK_CONTRACT_FLAG";
 
@@ -92,8 +93,6 @@ public class BlockEventListener {
         } else if (!enablesTaskNamesIsNull && enablesTaskNames.contains(curTaskName)) {
             return true;
         }
-
-
         return false;
 
     }
@@ -116,7 +115,7 @@ public class BlockEventListener {
         topicAndContractAddr2CallBackMap.clear();
 
 
-        ContractsConfig.ContractInfo stakingManagerCI = contractsConfig.getContractInfo("StakingManager");
+        ContractsConfig.ContractInfo stakingManagerCI = contractsConfig.getContractInfo("NodePoolStakingManager");
 
         if (isTaskEnable(enablesTaskNames, disableTaskNames, stakingManagerCI.getName()) && stakingManagerCI.getEnabled()) {
             Event operatorBonded = new ContractsEventBuilder().build(ContractsEventEnum.OPERATOR_BONDED);
@@ -125,12 +124,28 @@ public class BlockEventListener {
             topicAndContractAddr2CallBackMap.put(topicEventBuyBlindBox + "_" + stakingManagerCI.getAddress(), BondEventHandler.class.getMethod("descOperatorBonded", Log.class /*,secondParameterTypeClass.class*/));
         }
 
+        ContractsConfig.ContractInfo nodePoolFactory = contractsConfig.getContractInfo("NodePoolFactory");
+
+        if (isTaskEnable(enablesTaskNames, disableTaskNames, stakingManagerCI.getName()) && stakingManagerCI.getEnabled()) {
+            Event createNodePoolEvent = new ContractsEventBuilder().build(ContractsEventEnum.CREATE_NODE_POOL);
+            String createNodePoolEventTopic = EventEncoder.encode(createNodePoolEvent).toLowerCase();
+            topicAndContractAddr2EventMap.put(createNodePoolEventTopic + "_" + nodePoolFactory.getAddress(), createNodePoolEvent);
+            topicAndContractAddr2CallBackMap.put(createNodePoolEventTopic + "_" + nodePoolFactory.getAddress(), CreateNodePoolEventHandler.class.getMethod("descCreateNodePool", Log.class /*,secondParameterTypeClass.class*/));
+        }
+
         initNodePoolEvent();
     }
 
     public void initNodePoolEvent() throws NoSuchMethodException{
         Map<String, CreateNodePoolEvent> sharedMap = NodePoolMapSingleton.getSharedMap();
         for (Map.Entry<String, CreateNodePoolEvent> entry : sharedMap.entrySet()) {
+            List<String> enabledContractAddresses = contractsConfig.getEnabledContractAddresses();
+            if (!enabledContractAddresses.contains(entry.getValue().getNodePoolAddress().toLowerCase())) {
+                ContractsConfig.ContractInfo contractInfo = new ContractsConfig.ContractInfo();
+                contractInfo.setAddress(entry.getValue().getNodePoolAddress());
+                contractInfo.setEnabled(true);
+                contractsConfig.getContractList().add(contractInfo);
+            }
             String key = entry.getKey();
             Event stakeEvent = new ContractsEventBuilder().build(ContractsEventEnum.STAKE);
             String topicEventTransfer = EventEncoder.encode(stakeEvent).toLowerCase();
@@ -151,6 +166,11 @@ public class BlockEventListener {
             String topicEventClaimReward = EventEncoder.encode(claimRewardEvent).toLowerCase();
             topicAndContractAddr2EventMap.put(topicEventClaimReward + "_" + key, claimRewardEvent);
             topicAndContractAddr2CallBackMap.put(topicEventClaimReward + "_" + key, NodePoolEventsHandler.class.getMethod("descClaimReward", Log.class));
+
+            Event setFeeRatioEvent = new ContractsEventBuilder().build(ContractsEventEnum.SET_NEXT_EPOCH_FEE_RATE);
+            String setFeeRatioEventTopic = EventEncoder.encode(setFeeRatioEvent).toLowerCase();
+            topicAndContractAddr2EventMap.put(setFeeRatioEventTopic + "_" + key, setFeeRatioEvent);
+            topicAndContractAddr2CallBackMap.put(setFeeRatioEventTopic + "_" + key, NodePoolEventsHandler.class.getMethod("descSetNextEpochFeeRate", Log.class));
         }
     }
 
@@ -232,6 +252,9 @@ public class BlockEventListener {
                 topic = log.getTopics().get(0).toLowerCase();
             } catch (Exception e) {
                 continue;
+            }
+            if (topic.equalsIgnoreCase("0x59c0ec5157fa10f2e8cf2b08d429fd9c8208c840c84400987a7bbc4cd69918f7")){
+                logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() return  topic is null: " + topic);
             }
 
             String topicAddress = topic + "_" + contractAddress;

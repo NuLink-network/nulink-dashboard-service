@@ -31,7 +31,7 @@ public interface GridStakeRewardRepository extends PagingAndSortingRepository<Gr
 
     GridStakeReward findByEpochAndTokenId(String epoch, String tokenId);
 
-    @Query(value = "select count(distinct tokenId) from grid_stake_reward where staking_reward != '0'", nativeQuery = true)
+    @Query(value = "select count(distinct grid_stake_reward.token_id) from grid_stake_reward where staking_reward != '0'", nativeQuery = true)
     int countTotalNode();
 
 }

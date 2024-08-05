@@ -8,7 +8,11 @@ import javax.persistence.Table;
 
 @Data
 @Entity
-@Table(name = "valid_personal_staking_amount")
+@Table(name = "valid_personal_staking_amount", indexes = {
+        @javax.persistence.Index(name = "user_address_index", columnList = "user_address"),
+        @javax.persistence.Index(name = "epoch_index", columnList = "epoch"),
+        @javax.persistence.Index(name = "token_id_index", columnList = "token_id")
+})
 public class ValidPersonalStakingAmount extends BaseEntity{
 
     @Column(name = "user_address")

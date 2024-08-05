@@ -10,12 +10,12 @@ import java.util.List;
 @Repository
 public interface ValidPersonalStakingAmountRepository extends JpaRepository<ValidPersonalStakingAmount, Long>, JpaSpecificationExecutor {
 
-    ValidPersonalStakingAmount findFirstByTokenIdAndUserAddressAndEpochLessThanEqualOrderByCreateTimeDesc(String tokenId, String userAddress, Integer epoch);
-
     List<ValidPersonalStakingAmount> findAllByTokenIdAndEpochLessThanEqual(String tokenId, Integer epoch);
 
     List<ValidPersonalStakingAmount> findAllByTokenId(String tokenId);
 
     ValidPersonalStakingAmount findFirstByTokenIdAndUserAddressOrderByCreateTimeDesc(String tokenId, String userAddress);
+
+    List<ValidPersonalStakingAmount> findAllByUserAddress(String userAddress);
 
 }

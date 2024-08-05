@@ -8,6 +8,7 @@ import org.web3j.abi.datatypes.generated.Uint16;
 import org.web3j.abi.datatypes.generated.Uint256;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
 
@@ -24,6 +25,14 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
                 return getCliamEvent();
             case CLAIM_REWARD:
                 return getCliamRewardEvent();
+            case SET_NEXT_EPOCH_FEE_RATE:
+                return getSetNextEpochFeeRateEvent();
+            case SET_NEXT_EPOCH_FEE_RATE_DESC:
+                return getSetNextEpochFeeRateEventDesc();
+            case CREATE_NODE_POOL:
+                return getCreateNodePoolEvent();
+            case CREATE_NODE_POOL_DESC:
+                 return getCreateNodePoolDescEvent();
             default:
                 return null;
         }
@@ -93,4 +102,46 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
                 ));
     }
 
+    public static Event getSetNextEpochFeeRateEvent() {
+        return new Event("SetNextEpochFeeRate",
+                Arrays.asList(
+                        // _epoch
+                        new TypeReference<Uint16>(true) {},
+                        // _feeRate
+                        new TypeReference<Uint256>(true) {}
+                ));
+    }
+
+    public static Event getSetNextEpochFeeRateEventDesc() {
+        return new Event("SetNextEpochFeeRate",
+                List.of(
+                        // _epoch
+                        //new TypeReference<Uint16>(true) {},
+                        // _feeRate
+                        new TypeReference<Uint256>(true) {
+                        }
+                ));
+    }
+
+    public static Event getCreateNodePoolEvent() {
+        return new Event("CreateNodePool",
+                Arrays.asList(
+                        // _nodePoolAddr
+                        new TypeReference<Address>(true) {},
+                        // _tokenID
+                        new TypeReference<Uint256>(true) {},
+                        // _owner
+                        new TypeReference<Address>(true) {}
+                ));
+    }
+
+    public static Event getCreateNodePoolDescEvent() {
+        return new Event("CreateNodePool",
+                Arrays.asList(
+                        // _tokenID
+                        new TypeReference<Uint256>(true) {},
+                        // _owner
+                        new TypeReference<Address>(true) {}
+                ));
+    }
 }

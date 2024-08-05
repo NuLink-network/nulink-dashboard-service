@@ -29,7 +29,4 @@ public class CreateNodePoolEvent extends BaseEntity {
     @Column(name = "owner_address")
     private String ownerAddress;
 
-    @Column(name = "fee_ratio")
-    private String feeRatio;
-
 }

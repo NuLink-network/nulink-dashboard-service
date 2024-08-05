@@ -55,8 +55,8 @@ public class HealthCheckService {
         String previousEpoch = new BigDecimal(currentEpoch).subtract(new BigDecimal(1)).toString();
         String startTime = web3jUtils.getEpochStartTime(currentEpoch);
         if (System.currentTimeMillis() > (Long.parseLong(startTime) * 1000 + 15 * 60 * 1000)){
-            SetLivingRatio livingRatio = setLivingRatioService.findByEpoch(previousEpoch);
-            if (!ObjectUtils.isEmpty(livingRatio) && !livingRatio.isSetLivingRatio()){
+            List<SetLivingRatio> livingRatios = setLivingRatioService.findByEpoch(previousEpoch);
+            if (!ObjectUtils.isEmpty(livingRatios)){
                 LocalDateTime currentTime = LocalDateTime.now(ZoneId.of("Asia/Shanghai"));
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                 log.info("Staking Service Epoch " + previousEpoch + " Set living ratio task is failed, Problem started at " + currentTime.format(formatter));

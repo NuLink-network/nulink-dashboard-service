@@ -10,11 +10,13 @@ import java.util.List;
 @Repository
 public interface SetLivingRatioRepository extends PagingAndSortingRepository<SetLivingRatio, Long>, JpaSpecificationExecutor {
 
-    SetLivingRatio findFirstBySetLivingRatioAndTransactionFailOrderByCreateTime(boolean set, boolean error);
+    SetLivingRatio findFirstBySetLivingRatioAndTransactionFailOrderById(boolean set, boolean error);
 
     List<SetLivingRatio> findAllBySetLivingRatioOrderByCreateTimeDesc(boolean setLivingRatio);
 
-    SetLivingRatio findByEpoch(String epoch);
+    List<SetLivingRatio> findByEpoch(String epoch);
+
+    SetLivingRatio findByEpochAndTokenId(String epoch, String tokenId);
 
 }
 

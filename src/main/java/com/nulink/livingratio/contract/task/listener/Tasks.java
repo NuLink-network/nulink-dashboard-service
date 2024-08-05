@@ -8,6 +8,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.nulink.livingratio.contract.event.listener.impl.BlockEventListener;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Component
 public class Tasks {
 
@@ -16,22 +19,24 @@ public class Tasks {
     private static final Object blockListenerTaskKey = new Object();
     private static boolean lockBlockListenerTaskFlag = false;
 
-    private static final Object blockListenerDelay3TaskKey = new Object();
-    private static boolean lockBlockListenerDelay3TaskFlag = false;
+    private static final Object blockListenerDelay50TaskKey = new Object();
+    private static boolean lockBlockListenerDelay50TaskFlag = false;
 
-    private static final Object blockListenerDelayTaskKey = new Object();
-    private static boolean lockBlockListenerDelayTaskFlag = false;
+    private static final Object blockListenerDelay100TaskKey = new Object();
+    private static boolean lockBlockListenerDelay100TaskFlag = false;
 
     @Autowired
     BlockEventListener blockEventListener;
 
     @Autowired
-    BlockEventListener blockEventDelayListener30;
+    BlockEventListener blockEventDelayListener50;
+
+    @Autowired
+    BlockEventListener blockEventDelayListener100;
 
     @Async
     @Scheduled(cron = "0/6 * * * * ?")
     public void scanBlockEvent() {
-
 
         synchronized (blockListenerTaskKey) {
             if (Tasks.lockBlockListenerTaskFlag) {
@@ -56,28 +61,56 @@ public class Tasks {
 
     @Async
     @Scheduled(cron = "0/6 * * * * ?")
-    public void scanBlockEventDelay30() {
+    public void scanBlockEventDelay50() {
 
-        synchronized (blockListenerDelayTaskKey) {
-            if (Tasks.lockBlockListenerDelayTaskFlag) {
-                logger.warn("The Delay30 blockchain event scanning task is currently in progress.");
+        synchronized (blockListenerDelay50TaskKey) {
+            if (Tasks.lockBlockListenerDelay50TaskFlag) {
+                logger.warn("The Delay50 blockchain event scanning task is currently in progress.");
                 return;
             }
-            Tasks.lockBlockListenerDelayTaskFlag = true;
+            Tasks.lockBlockListenerDelay50TaskFlag = true;
         }
 
-        logger.info("Initiate the execution of the Delay30 blockchain event scanning task.");
+        logger.info("Initiate the execution of the Delay50 blockchain event scanning task.");
         try {
 
-            blockEventDelayListener30.start(30, null, null);
+            blockEventDelayListener50.start(50, null, null);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        Tasks.lockBlockListenerDelayTaskFlag = false;
+        Tasks.lockBlockListenerDelay50TaskFlag = false;
 
-        logger.info("The Delay30 blockchain event scanning task has concluded.");
+        logger.info("The Delay50 blockchain event scanning task has concluded.");
+    }
+
+    @Async
+    @Scheduled(cron = "0/6 * * * * ?")
+    public void scanBlockEventDelay100() {
+
+        synchronized (blockListenerDelay100TaskKey) {
+            if (Tasks.lockBlockListenerDelay100TaskFlag) {
+                logger.warn("The Delay100 blockchain event scanning task is currently in progress.");
+                return;
+            }
+            Tasks.lockBlockListenerDelay100TaskFlag = true;
+        }
+
+        logger.info("Initiate the execution of the Delay100 blockchain event scanning task.");
+        try {
+            Set<String> disableTaskNames = new HashSet<>();
+            disableTaskNames.add("NodePoolStakingManager");
+            disableTaskNames.add("NodePoolFactory");
+            blockEventDelayListener100.start(100, null, disableTaskNames);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Tasks.lockBlockListenerDelay100TaskFlag = false;
+
+        logger.info("The Delay100 blockchain event scanning task has concluded.");
     }
 
 }

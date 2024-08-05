@@ -1,11 +1,11 @@
 package com.nulink.livingratio.service;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.nulink.livingratio.entity.*;
 import com.nulink.livingratio.entity.event.CreateNodePoolEvent;
+import com.nulink.livingratio.entity.event.NodePoolEvents;
 import com.nulink.livingratio.repository.*;
 import com.nulink.livingratio.utils.RedisService;
 import com.nulink.livingratio.utils.Web3jUtils;
@@ -15,8 +15,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.annotation.Resource;
-import javax.persistence.criteria.Predicate;
+import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +48,7 @@ public class GridStakingDetailService {
     @Resource
     private PlatformTransactionManager platformTransactionManager;
 
-    private GridStakingDetailRepository gridStakingDetailRepository;
+    private final GridStakingDetailRepository gridStakingDetailRepository;
 
     private final GridStakeRewardRepository gridStakeRewardRepository;
 
@@ -63,6 +63,8 @@ public class GridStakingDetailService {
     private final RedisService redisService;
 
     private final Web3jUtils web3jUtils;
+    @Autowired
+    private NodePoolEventsRepository nodePoolEventsRepository;
 
     public GridStakingDetailService(GridStakingDetailRepository gridStakingDetailRepository,
                                     GridStakeRewardRepository gridStakeRewardRepository,
@@ -90,27 +92,24 @@ public class GridStakingDetailService {
     @Scheduled(cron = "0 0/1 * * * ? ")
     public void generatePersonalCurrentEpochStakeRewardTask(){
         RLock personalCurrentEpochStakeRewardTaskLock = redissonClient.getLock("PersonalCurrentEpochStakeRewardTask");
-
         try{
             if (personalCurrentEpochStakeRewardTaskLock.tryLock()){
                 log.info("The generate Personal Current Epoch Valid StakeReward task is beginning");
                 String currentEpoch = web3jUtils.getCurrentEpoch();
-                if (Integer.parseInt(currentEpoch) < 1){
-                    personalCurrentEpochStakeRewardTaskLock.unlock();
+                if (Integer.parseInt(currentEpoch) < 1) {
                     return;
                 }
 
-                if (!checkScanBlockNumber()){
+                /*if (!checkScanBlockNumber()){
                     log.info("Waiting for scanning block");
-                    personalCurrentEpochStakeRewardTaskLock.unlock();
                     return;
-                }
+                }*/
 
                 List<CreateNodePoolEvent> nodePools = createNodePoolEventService.findAll();
                 ExecutorService executorService = Executors.newFixedThreadPool((Math.min(nodePools.size(), 10)));
 
                 for (CreateNodePoolEvent pool : nodePools) {
-                    executorService.execute(() -> generatePersonalCurrentEpochValidStakeReward(pool, currentEpoch));
+                    executorService.submit(() -> generatePersonalCurrentEpochValidStakeReward(pool, currentEpoch));
                 }
 
                 executorService.shutdown();
@@ -134,55 +133,63 @@ public class GridStakingDetailService {
 
     public void generatePersonalCurrentEpochValidStakeReward(CreateNodePoolEvent grid, String currentEpoch){
         String tokenId = grid.getTokenId();
+        RLock lock = redissonClient.getLock("PersonalCurrentEpochValidStakeReward" + tokenId + currentEpoch);
         DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
         transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
-        List<GridStakingDetail> stakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(tokenId, currentEpoch);
-        if (!stakingDetails.isEmpty()){
-            log.info("Grid {} Current Epoch Valid StakeReward task has already been executed.", tokenId);
-            platformTransactionManager.commit(status);
-            return;
-        }
-        // Get the valid personal staking amount
-        List<ValidPersonalStakingAmount> personalStakingAmounts = validPersonalStakingAmountRepository.findAllByTokenIdAndEpochLessThanEqual(tokenId, Integer.parseInt(currentEpoch));
-        if (personalStakingAmounts.isEmpty()){
-            log.info("Grid {} valid personal staking amount is empty", tokenId);
-            platformTransactionManager.commit(status);
-            return;
-        }
-        try {
-            String currentFeeRate = epochFeeRateEventService.getCurrentFeeRate(tokenId);
-            String nextFeeRate = epochFeeRateEventService.getNextFeeRate(tokenId);
-            personalStakingAmounts = personalStakingAmounts.stream().filter(personalStakingAmount -> !personalStakingAmount.getStakingAmount().equals("0")).collect(Collectors.toList());
-            BigInteger totalStakingAmount = BigInteger.ZERO;
-            for (ValidPersonalStakingAmount personalStakingAmount : personalStakingAmounts) {
-                totalStakingAmount = totalStakingAmount.add(new BigInteger(personalStakingAmount.getStakingAmount()));
+        try{
+            if (lock.tryLock()){
+                List<GridStakingDetail> stakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(tokenId, currentEpoch);
+                if (!stakingDetails.isEmpty()){
+                    log.info("Grid {} Current Epoch Valid StakeReward task has already been executed.", tokenId);
+                    platformTransactionManager.commit(status);
+                    return;
+                }
+                // Get the valid personal staking amount
+                List<ValidPersonalStakingAmount> personalStakingAmounts = validPersonalStakingAmountRepository.findAllByTokenIdAndEpochLessThanEqual(tokenId, Integer.parseInt(currentEpoch));
+                /*if (personalStakingAmounts.isEmpty()){
+                    log.info("Grid {} valid personal staking amount is empty", tokenId);
+                    platformTransactionManager.commit(status);
+                    return;
+                }*/
+                String currentFeeRate = epochFeeRateEventService.getFeeRate(tokenId, currentEpoch);
+                String nextFeeRate = epochFeeRateEventService.getFeeRate(tokenId, String.valueOf(Integer.parseInt(currentEpoch) + 1));
+                personalStakingAmounts = personalStakingAmounts.stream().filter(personalStakingAmount -> !personalStakingAmount.getStakingAmount().equals("0")).collect(Collectors.toList());
+                BigInteger totalStakingAmount = BigInteger.ZERO;
+                for (ValidPersonalStakingAmount personalStakingAmount : personalStakingAmounts) {
+                    totalStakingAmount = totalStakingAmount.add(new BigInteger(personalStakingAmount.getStakingAmount()));
+                }
+                List<GridStakingDetail> gridStakingDetails = new ArrayList<>();
+                for (ValidPersonalStakingAmount personalStakingAmount : personalStakingAmounts) {
+                    GridStakingDetail gridStakingDetail = new GridStakingDetail();
+                    gridStakingDetail.setEpoch(currentEpoch);
+                    gridStakingDetail.setTokenId(personalStakingAmount.getTokenId());
+                    gridStakingDetail.setUserAddress(personalStakingAmount.getUserAddress());
+                    gridStakingDetail.setStakingAmount(personalStakingAmount.getStakingAmount());
+                    gridStakingDetail.setStakingQuota(new BigDecimal(personalStakingAmount.getStakingAmount()).divide(new BigDecimal(totalStakingAmount.toString()), 4, BigDecimal.ROUND_HALF_UP).toString());
+                    gridStakingDetail.setFeeRatio(currentFeeRate);
+                    //gridStakingDetail.setStakingReward("0");
+                    gridStakingDetails.add(gridStakingDetail);
+                }
+                gridStakingDetailRepository.saveAll(gridStakingDetails);
+                GridStakeReward stakeReward = gridStakeRewardRepository.findByEpochAndTokenId(currentEpoch, tokenId);
+                if (stakeReward != null){
+                    GridStakeReward gridStakeReward = new GridStakeReward();
+                    gridStakeReward.setEpoch(currentEpoch);
+                    gridStakeReward.setTokenId(tokenId);
+                    gridStakeReward.setStakingAmount(totalStakingAmount.toString());
+                    gridStakeReward.setStakingNumber(personalStakingAmounts.size());
+                    gridStakeReward.setCurrentFeeRatio(currentFeeRate);
+                    gridStakeReward.setNextFeeRatio(nextFeeRate);
+                    gridStakeReward.setStakingProvider(grid.getOwnerAddress());
+                    gridStakeReward.setStakingReward("0");
+                    gridStakeRewardRepository.save(gridStakeReward);
+                }
             }
-            List<GridStakingDetail> gridStakingDetails = new ArrayList<>();
-            for (ValidPersonalStakingAmount personalStakingAmount : personalStakingAmounts) {
-                GridStakingDetail gridStakingDetail = new GridStakingDetail();
-                gridStakingDetail.setEpoch(currentEpoch);
-                gridStakingDetail.setTokenId(personalStakingAmount.getTokenId());
-                gridStakingDetail.setStakingProvider(personalStakingAmount.getUserAddress());
-                gridStakingDetail.setStakingAmount(personalStakingAmount.getStakingAmount());
-                gridStakingDetail.setStakingQuota(new BigDecimal(personalStakingAmount.getStakingAmount()).divide(new BigDecimal(totalStakingAmount.toString()), 4, BigDecimal.ROUND_HALF_UP).toString());
-                gridStakingDetail.setFeeRatio(currentFeeRate);
-                gridStakingDetail.setStakingReward("0");
-                gridStakingDetails.add(gridStakingDetail);
-            }
-            gridStakingDetailRepository.saveAll(gridStakingDetails);
-            GridStakeReward gridStakeReward = new GridStakeReward();
-            gridStakeReward.setEpoch(currentEpoch);
-            gridStakeReward.setTokenId(tokenId);
-            gridStakeReward.setValidStakingAmount(totalStakingAmount.toString());
-            gridStakeReward.setStakingNumber(personalStakingAmounts.size());
-            gridStakeReward.setCurrentFeeRatio(currentFeeRate);
-            gridStakeReward.setNextFeeRatio(nextFeeRate);
-            gridStakeReward.setStakingProvider(grid.getOwnerAddress());
-            gridStakeRewardRepository.save(gridStakeReward);
         } catch (Exception e){
             log.error("The generate Personal Current Epoch Valid StakeReward task fail, tokenId: {} ", tokenId, e);
         } finally {
+            lock.unlock();
             platformTransactionManager.commit(status);
         }
     }
@@ -199,7 +206,7 @@ public class GridStakingDetailService {
             blockNumber = new BigInteger(object.toString());
         }
 
-        ContractOffset contractOffset = contractOffsetService.findByContractAddress("Delay30_BLOCK_CONTRACT_FLAG");
+        ContractOffset contractOffset = contractOffsetService.findByContractAddress("Delay100_BLOCK_CONTRACT_FLAG");
         return contractOffset.getBlockOffset().compareTo(blockNumber) > 0;
     }
 
@@ -274,10 +281,28 @@ public class GridStakingDetailService {
 
         gridStakingDetails = pageHelper(pageSize, pageNum, orderBy, sorted, gridStakingDetails);
 
+        GridStakeReward gridStakeReward = gridStakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
+        if (gridStakeReward == null){
+            throw new RuntimeException("The grid is not found");
+        }
+        if (epoch.equals(currentEpoch)){
+            String stakingReward = gridStakeReward.getStakingReward();
+            String currentFeeRatio = gridStakeReward.getCurrentFeeRatio();
+            for (GridStakingDetail gridStakingDetail : gridStakingDetails) {
+                String stakingQuota = gridStakingDetail.getStakingQuota();
+                if (!StringUtils.isEmpty(stakingQuota)){
+                    gridStakingDetail.setStakingReward(
+                            new BigDecimal(stakingReward).multiply(new BigDecimal("10000").subtract(new BigDecimal(currentFeeRatio)))
+                                    .multiply(new BigDecimal(stakingQuota)).divide(new BigDecimal("10000"), 0, RoundingMode.HALF_UP).toString()
+                    );
+                }
+            }
+        }
+
         try {
             String pvoStr = JSON.toJSONString(gridStakingDetails, SerializerFeature.WriteNullStringAsEmpty);
             if (epoch.equalsIgnoreCase(currentEpoch)){
-                redisService.set(stakeRewardPageKey, pvoStr, 15, TimeUnit.MINUTES);
+                redisService.set(stakeRewardPageKey, pvoStr, 5, TimeUnit.MINUTES);
                 redisService.set(stakeRewardPageCountKey, String.valueOf(gridStakingDetails.size()), 15, TimeUnit.MINUTES);
             } else {
                 redisService.set(stakeRewardPageKey, pvoStr, 24, TimeUnit.HOURS);
@@ -290,18 +315,126 @@ public class GridStakingDetailService {
         return new PageImpl<>(gridStakingDetails, PageRequest.of(pageNum - 1, pageSize), gridStakingDetails.size());
     }
 
-    private Sort resolveSort(String orderBy, String sorted) {
-        Sort sort;
-        if ("stakingReward".equalsIgnoreCase(orderBy)) {
-            sort = Sort.by("stakingReward");
-        } else if ("stakingAmount".equalsIgnoreCase(orderBy)) {
-            sort = Sort.by("validStakingAmount");
-        } else if ("stakingQuota".equalsIgnoreCase(orderBy)) {
-            sort = Sort.by("validStakingQuota");
-        } else {
-            sort = Sort.by("createTime");
-        }
-        return "DESC".equalsIgnoreCase(sorted) ? sort.descending() : sort.ascending();
+    public List<GridStakingDetail> findByUseAddress(String userAddress) {
+        return gridStakingDetailRepository.findByUserAddress(userAddress);
     }
 
+    private BigInteger calculateStakingReward(String gridStakingReward, String feeRatio, String stakingQuota) {
+        BigDecimal stakingReward = new BigDecimal(gridStakingReward);
+        return stakingReward.multiply(new BigDecimal(feeRatio)).multiply(new BigDecimal(stakingQuota)).divide(new BigDecimal(10000)).setScale(0, RoundingMode.DOWN).toBigInteger();
+    }
+
+    @Async
+    @Scheduled(cron = "0 0/1 * * * ? ")
+    public void generatePreviousEpochStakeDetailTask(){
+        RLock previousEpochStakeDetailTaskLock = redissonClient.getLock("previousEpochStakeDetailTaskLock");
+
+        try{
+            if (previousEpochStakeDetailTaskLock.tryLock()){
+                log.info("the generate previous epoch stake detail task is beginning");
+                String previousEpoch = new BigDecimal(web3jUtils.getCurrentEpoch()).subtract(new BigDecimal(1)).toString();
+                if (Integer.parseInt(previousEpoch) < 1) {
+                    return;
+                }
+
+                if (!checkScanBlockNumber()){
+                    log.info("Waiting for scanning block");
+                    return;
+                }
+
+                List<GridStakeReward> stakeRewards = gridStakeRewardRepository.findAllByEpoch(previousEpoch);
+                ExecutorService executorService = Executors.newFixedThreadPool((Math.min(stakeRewards.size(), 10)));
+
+                for (GridStakeReward gridStakeReward : stakeRewards) {
+                    executorService.execute(() -> updatePreviousEpochStakingReward(previousEpoch, gridStakeReward));
+                }
+
+                executorService.shutdown();
+                try {
+                    executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.error( "the generate previous epoch stake detail task fail: ", e);
+                }
+                log.info("the generate previous epoch stake detail task is finish");
+            } else {
+                log.info("the generate previous epoch stake detail task is already in progress");
+            }
+        }catch (Exception e){
+            log.error("the generate previous epoch stake detail task fail:", e);
+        }finally {
+            previousEpochStakeDetailTaskLock.unlock();
+        }
+    }
+
+    public void updatePreviousEpochStakingReward(String epoch, GridStakeReward gridStakeReward) {
+        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
+        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
+        RLock lock = redissonClient.getLock("updatePreviousEpochStakingReward" + epoch + gridStakeReward.getTokenId());
+        try {
+            if (lock.tryLock()){
+                String tokenId = gridStakeReward.getTokenId();
+                String gridStakingReward = gridStakeReward.getStakingReward();
+                List<GridStakingDetail> gridStakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(epoch, tokenId);
+                if (!gridStakingDetails.isEmpty()){
+                    if (gridStakingDetails.get(0).isValid()) {
+                        return;
+                    }
+                }
+                for (GridStakingDetail gridStakingDetail : gridStakingDetails) {
+                    gridStakingDetail.setStakingReward(calcPersonalStakingReward(gridStakingReward, gridStakeReward.getCurrentFeeRatio(), gridStakingDetail.getStakingQuota()));
+                    gridStakingDetail.setValid(true);
+                }
+                gridStakingDetailRepository.saveAll(gridStakingDetails);
+            }
+        } catch (Exception e){
+            platformTransactionManager.rollback(status);
+            log.error("the generate previous epoch stake detail task fail:", e);
+        } finally {
+            lock.unlock();
+            platformTransactionManager.commit(status);
+        }
+    }
+
+    private String calcPersonalStakingReward(String gridStakingReward, String feeRatio, String stakingQuota) {
+        return (new BigInteger(gridStakingReward).subtract(new BigInteger(gridStakingReward).multiply(new BigInteger(feeRatio).subtract(new BigInteger("10000"))))).multiply(new BigInteger(stakingQuota)).toString();
+    }
+
+    public Map<String, String> findRewardData(String userAddress, String epoch, String tokenId) {
+        String accumulatedRewardCacheKey = "findRewardData:accumulatedReward:" + userAddress + ":" + epoch + ":" + tokenId;
+        String claimableRewardCacheKey = "findRewardData:claimableReward:" + userAddress + ":" + epoch + ":" + tokenId;
+        try {
+            Object accumulatedRewardRedisValue = redisService.get(accumulatedRewardCacheKey);
+            Object claimableRewardRedisValue = redisService.get(claimableRewardCacheKey);
+            if (null != accumulatedRewardRedisValue && null != claimableRewardRedisValue) {
+                String accumulatedReward = accumulatedRewardRedisValue.toString();
+                String claimableReward = claimableRewardRedisValue.toString();
+                return new HashMap<String, String>() {{
+                    put("accumulatedReward", accumulatedReward);
+                    put("claimableReward", claimableReward);
+                }};
+            }
+        }catch (Exception e){
+            log.error("findRewardData redis read error：{}", e.getMessage());
+        }
+        Map<String, String> result = new HashMap<>();
+        List<GridStakingDetail> details = gridStakingDetailRepository.findAllByUserAddressAndEpochLessThanAndTokenIdOrderByCreateTimeDesc(userAddress, epoch, tokenId);
+        BigInteger accumulatedReward = BigInteger.ZERO;
+        for (GridStakingDetail detail : details) {
+            accumulatedReward = accumulatedReward.add(new BigInteger(detail.getStakingReward()));
+        }
+        result.put("accumulatedReward", accumulatedReward.toString());
+        List<NodePoolEvents> claimReward = nodePoolEventsRepository.findAllByUserAndTokenIdAndEventAndEpochLessThanEqual(userAddress, tokenId, "CLAIM_REWARD", epoch);
+        BigInteger claimedReward = claimReward.stream().map(NodePoolEvents::getAmount).map(BigInteger::new).reduce(BigInteger.ZERO, BigInteger::add);
+        BigInteger claimableReward = accumulatedReward.subtract(claimedReward);
+        result.put("claimableReward", claimableReward.toString());
+        try {
+            redisService.set(accumulatedRewardCacheKey, accumulatedReward.toString(), 10, TimeUnit.SECONDS);
+            redisService.set(claimableRewardCacheKey, claimableReward.toString(), 10, TimeUnit.SECONDS);
+        }catch (Exception e){
+            log.error("StakeRewardOverview findLastEpoch redis write error：{}", e.getMessage());
+        }
+        return result;
+    }
 }

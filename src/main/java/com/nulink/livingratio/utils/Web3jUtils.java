@@ -118,8 +118,8 @@ public class Web3jUtils {
         credentials = Credentials.create(getPrivateKey(keystoreContent, password));
         String rpcUrl = rpcConfig.getRpcUrl();
         if (StringUtils.isEmpty(rpcUrl)){
-            rpcUrl = ankrRpc;
-            rpcConfig.setRpcUrl(ankrRpc);
+            rpcUrl = blockpiRpc;
+            rpcConfig.setRpcUrl(blockpiRpc);
         }
         logger.info("Init Web3j instance ...");
         logger.info("Construct a new Web3j instance by " + rpcUrl);
@@ -533,7 +533,7 @@ public class Web3jUtils {
         }
         List<Type> inputParameters = new ArrayList<>();
         List<TypeReference<?>> outputParameters = new ArrayList<>();
-        outputParameters.add(new TypeReference<Uint16>() {});
+        outputParameters.add(new TypeReference<Uint256>() {});
         Function function = new Function("getCurrentEpoch", inputParameters, outputParameters);
 
         ContractsConfig.ContractInfo eventReferralRewardCI = contractsConfig.getContractInfo("NuLinkStakingSetting");
@@ -674,20 +674,33 @@ public class Web3jUtils {
         return null;
     }
 
-    public String setLiveRatio(String epoch, List<String> stakingProviders, List<String> liveRatios, boolean finish) throws IOException, ExecutionException, InterruptedException {
+    public String setLiveRatio(String epoch, String tokenId, List<String> stakingRewardAmounts, List<String> validStakingAmounts) throws IOException, ExecutionException, InterruptedException {
 
-        List<Address> addresses = stakingProviders.stream().map(Address::new).collect(Collectors.toList());
 
-        List<Uint16> list = liveRatios.stream().map(liveRatio -> new Uint16(new BigDecimal(liveRatio).multiply(new BigDecimal(10000)).longValue())).collect(Collectors.toList());
+        List<Uint256> stakingRewardAmountList = stakingRewardAmounts.stream().map(stakingRewardAmount -> new Uint256(Long.parseLong(stakingRewardAmount))).collect(Collectors.toList());
+        List<Uint256> validStakingAmountList = validStakingAmounts.stream().map(validStakingAmount -> new Uint256(Long.parseLong(validStakingAmount))).collect(Collectors.toList());
 
         List<Type> inputParameters = new ArrayList<>();
+        inputParameters.add(new Uint256(Long.parseLong(tokenId)));
         inputParameters.add(new Uint16(Long.parseLong(epoch)));
-        inputParameters.add(new Bool(finish));
-        inputParameters.add(new DynamicArray(Address.class, addresses));
-        inputParameters.add(new DynamicArray(Uint16.class, list));
+        inputParameters.add(new DynamicArray(Uint256.class, stakingRewardAmountList));
+        inputParameters.add(new DynamicArray(Uint256.class, validStakingAmountList));
         List<TypeReference<?>> outputParameters = new ArrayList<>();
-        Function function = new Function("setLiveRatio", inputParameters, outputParameters);
-        ContractsConfig.ContractInfo eventReferralRewardCI = contractsConfig.getContractInfo("NuLinkStakingPool");
+        Function function = new Function("setNodePoolEpochReward", inputParameters, outputParameters);
+        ContractsConfig.ContractInfo eventReferralRewardCI = contractsConfig.getContractInfo("NodePoolVault");
+        return sendTransaction(function, eventReferralRewardCI.getAddress());
+    }
+
+    public String setStakingReward(String epoch, String tokenId, String rewardAmount, String epochActiveAmount) throws IOException, ExecutionException, InterruptedException {
+
+        List<Type> inputParameters = new ArrayList<>();
+        inputParameters.add(new Uint256(Long.parseLong(tokenId)));
+        inputParameters.add(new Uint16(Long.parseLong(epoch)));
+        inputParameters.add(new Uint256(Long.parseLong(rewardAmount)));
+        inputParameters.add(new Uint256(Long.parseLong(epochActiveAmount)));
+        List<TypeReference<?>> outputParameters = new ArrayList<>();
+        Function function = new Function("setNodePoolEpochReward", inputParameters, outputParameters);
+        ContractsConfig.ContractInfo eventReferralRewardCI = contractsConfig.getContractInfo("NodePoolVault");
         return sendTransaction(function, eventReferralRewardCI.getAddress());
     }
 

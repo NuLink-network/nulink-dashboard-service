@@ -8,7 +8,9 @@ import javax.persistence.Table;
 
 @Data
 @Entity
-@Table(name = "stake_reward_overview")
+@Table(name = "stake_reward_overview", indexes = {
+        @javax.persistence.Index(name = "epoch_index", columnList = "epoch")
+})
 public class StakeRewardOverview extends BaseEntity{
 
     @Column(name = "valid_staking_amount")

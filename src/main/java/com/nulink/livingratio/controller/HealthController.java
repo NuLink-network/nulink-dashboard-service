@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.util.List;
 
 @Api(tags = "Health")
 @RestController
@@ -32,22 +33,6 @@ public class HealthController {
     @GetMapping
     public ResponseEntity health(){
         return new ResponseEntity<>(BaseResponse.success("Staking Service is Running"), HttpStatus.OK);
-    }
-
-    @GetMapping("stakingReward")
-    public ResponseEntity checkStakingReward(){
-        String currentEpoch = web3jUtils.getCurrentEpoch();
-        String previousEpoch = new BigDecimal(currentEpoch).subtract(new BigDecimal(1)).toString();
-        String startTime = web3jUtils.getEpochStartTime(currentEpoch);
-        if (System.currentTimeMillis() > (Long.parseLong(startTime) * 1000 + 15 * 60 * 1000)){
-            SetLivingRatio livingRatio = setLivingRatioService.findByEpoch(previousEpoch);
-            if (livingRatio.isSetLivingRatio()){
-                return new ResponseEntity<>(BaseResponse.success(livingRatio), HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(BaseResponse.failed("Epoch " + previousEpoch + " Set living ratio task is failed", livingRatio), HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        }
-        return new ResponseEntity<>(BaseResponse.success("Epoch " + previousEpoch + " Set living ratio task is currently being executed ..."), HttpStatus.OK);
     }
 
     @GetMapping("getBalance")

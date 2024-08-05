@@ -20,11 +20,8 @@ public class StakeRewardController {
 
     private final GridStakeRewardService stakeRewardService;
 
-    private final Web3jUtils web3jUtils;
-
-    public StakeRewardController(GridStakeRewardService stakeRewardService, Web3jUtils web3jUtils) {
+    public StakeRewardController(GridStakeRewardService stakeRewardService) {
         this.stakeRewardService = stakeRewardService;
-        this.web3jUtils = web3jUtils;
     }
 
     @ApiOperation("node info")
@@ -40,7 +37,7 @@ public class StakeRewardController {
         return BaseResponse.success(stakeRewardService.findByEpochAndStakingProvider(stakeProvider, epoch));
     }
 
-    @ApiOperation("Stake Reward Info")
+    @ApiOperation("find By TokenId And Epoch")
     @GetMapping("/findByTokenIdAndEpoch")
     public BaseResponse<GridStakeReward> findByTokenIdAndEpoch(@RequestParam(value = "tokenId") String tokenId,
                                                          @RequestParam(value = "epoch") String epoch){

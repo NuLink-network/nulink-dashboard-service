@@ -33,4 +33,8 @@ public class CreateNodePoolEventService {
         return createNodePoolEventRepository.findAll();
     }
 
+    public Integer stakeGridsForAuction() {
+        return createNodePoolEventRepository.stakeGridsForAuction();
+    }
+
 }

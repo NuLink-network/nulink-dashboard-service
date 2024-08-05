@@ -6,16 +6,21 @@ import com.nulink.livingratio.repository.SetLivingRatioRepository;
 import com.nulink.livingratio.repository.GridStakeRewardRepository;
 import com.nulink.livingratio.utils.Web3jUtils;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.exceptions.TransactionException;
 
+import javax.annotation.Resource;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +38,8 @@ public class SetLivingRatioService {
     private final Web3jUtils web3jUtils;
     private final SetLivingRatioRepository setLivingRatioRepository;
     private final GridStakeRewardRepository stakeRewardRepository;
+    @Resource
+    private RedissonClient redissonClient;
 
     public SetLivingRatioService(Web3jUtils web3jUtils,
                                  SetLivingRatioRepository setLivingRatioRepository,
@@ -44,14 +51,17 @@ public class SetLivingRatioService {
 
     @Transactional
     public void create(SetLivingRatio setLivingRatio){
-        setLivingRatioRepository.save(setLivingRatio);
+        SetLivingRatio livingRatio = setLivingRatioRepository.findByEpochAndTokenId(setLivingRatio.getEpoch(), setLivingRatio.getTokenId());
+        if (ObjectUtils.isNotEmpty(livingRatio)){
+            setLivingRatioRepository.save(setLivingRatio);
+        }
     }
 
     public List<SetLivingRatio> findUnset(){
         return setLivingRatioRepository.findAllBySetLivingRatioOrderByCreateTimeDesc(false);
     }
 
-    public SetLivingRatio findByEpoch(String epoch){
+    public List<SetLivingRatio> findByEpoch(String epoch){
         return setLivingRatioRepository.findByEpoch(epoch);
     }
 
@@ -66,20 +76,29 @@ public class SetLivingRatioService {
             }
             SetLivingRatioService.lockSetUnLivingRatioTaskFlag = true;
         }
+        RLock setUnLivingRatioTask = redissonClient.getLock("setUnLivingRatioTask");
         try{
-            String previousEpoch = new BigDecimal(web3jUtils.getCurrentEpoch()).subtract(new BigDecimal(1)).toString();
-            SetLivingRatio livingRatio = setLivingRatioRepository.findByEpoch(previousEpoch);
-            if (null == livingRatio){
-                SetLivingRatio setLivingRatio = new SetLivingRatio();
-                setLivingRatio.setEpoch(previousEpoch);
-                setLivingRatio.setSetLivingRatio(false);
-                setLivingRatioRepository.save(setLivingRatio);
-            } else {
-                log.warn("The unSet living ratio task has already been executed");
+            if (setUnLivingRatioTask.tryLock()){
+                String previousEpoch = new BigDecimal(web3jUtils.getCurrentEpoch()).subtract(new BigDecimal(1)).toString();
+                List<SetLivingRatio> livingRatios = setLivingRatioRepository.findByEpoch(previousEpoch);
+                if (livingRatios.isEmpty()){
+                    List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(previousEpoch);
+                    for (GridStakeReward stakeReward : stakeRewards) {
+                        SetLivingRatio setLivingRatio = new SetLivingRatio();
+                        setLivingRatio.setEpoch(previousEpoch);
+                        setLivingRatio.setTokenId(stakeReward.getTokenId());
+                        setLivingRatio.setSetLivingRatio(false);
+                        create(setLivingRatio);
+                    }
+                } else {
+                    log.warn("The unSet living ratio task has already been executed");
+                }
             }
-            SetLivingRatioService.lockSetUnLivingRatioTaskFlag = false;
         } catch (Exception e){
+            log.error("The set unLiving ratio task has failed", e);
+        } finally {
             SetLivingRatioService.lockSetUnLivingRatioTaskFlag = false;
+            setUnLivingRatioTask.unlock();
         }
     }
 
@@ -89,86 +108,63 @@ public class SetLivingRatioService {
     public void setLivingRatio(){
         synchronized (setLivingRatioTaskKey) {
             if (SetLivingRatioService.lockSetLivingRatioTaskFlag) {
-                log.warn("The set living ratio task is already in progress");
+                log.warn("The set staking reward task is already in progress");
                 return;
             }
             SetLivingRatioService.lockSetLivingRatioTaskFlag = true;
         }
-
+        RLock setLivingRatioTask = redissonClient.getLock("setLivingRatioTask");
         try {
-            log.info("The set living ratio task is starting ...");
-            SetLivingRatio setLivingRatio = setLivingRatioRepository.findFirstBySetLivingRatioAndTransactionFailOrderByCreateTime(false, false);
-            if (null != setLivingRatio) {
-                String epoch = setLivingRatio.getEpoch();
-                List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpochAndLivingRatioNot(epoch, "0.0000");
-                stakeRewards = stakeRewards.stream().filter(stakeReward -> BigDecimal.ZERO.compareTo(new BigDecimal(stakeReward.getLivingRatio())) != 0).collect(Collectors.toList());
-                int batchSize = 100;
-                int totalElements = stakeRewards.size();
-                int batches = (int) Math.ceil((double) totalElements / batchSize);
-                boolean finish = false;
-                String txHash = "";
-                if (totalElements > 0){
-                    for (int i = 0; i < batches; i++) {
-                        int fromIndex = i * batchSize;
-                        int toIndex = Math.min((i + 1) * batchSize, totalElements);
-                        finish = (i + 1) * batchSize >= totalElements;
-                        List<GridStakeReward> batchList = stakeRewards.subList(fromIndex, toIndex);
-                        if (!batchList.isEmpty()) {
-                            try {
-                                List<String> stakingProviders = batchList.stream().map(GridStakeReward::getTokenId).collect(Collectors.toList());
-                                List<String> livingRatios = batchList.stream().map(GridStakeReward::getLivingRatio).collect(Collectors.toList());
-                                int j = 0;
-                                do {
-                                    txHash = web3jUtils.setLiveRatio(epoch, stakingProviders, livingRatios, finish);
-                                    j++;
-                                    try {
-                                        TimeUnit.MILLISECONDS.sleep(10000);
-                                    } catch (InterruptedException e) {
-                                        SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
-                                        return;
-                                    }
-                                } while (j < 20 && (null == txHash || txHash.isEmpty()));
-                                try {
-                                    TransactionReceipt txReceipt = web3jUtils.waitForTransactionReceipt(txHash);
-                                    // If status in response equals 1 the transaction was successful. If it is equals 0 the transaction was reverted by EVM.
-                                    if (Integer.parseInt(txReceipt.getStatus().substring(2), 16) == 0) {
-                                        log.error("==========>set living ratio failed txHash {} revert reason: {}", txHash, txReceipt.getRevertReason());
-                                        setLivingRatio.setTransactionFail(true);
-                                        setLivingRatio.setTxHash(txHash);
-                                        setLivingRatio.setReason(txReceipt.getRevertReason());
-                                        setLivingRatioRepository.save(setLivingRatio);
-                                        SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
-                                        return;
-                                    }
-                                } catch (TransactionException exception){
-                                    if(StringUtils.contains(exception.toString(), "Transaction receipt was not generated after")){
-                                        setLivingRatio.setTransactionFail(true);
-                                        setLivingRatio.setTxHash(txHash);
-                                        setLivingRatio.setReason(exception.toString());
-                                        setLivingRatioRepository.save(setLivingRatio);
-                                        SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
-                                        return;
-                                    }
-                                }
-                            } catch (IOException | InterruptedException | ExecutionException e) {
-                                log.error("==========>set living ratio failed reason: {}", e.getMessage());
-                                SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
-                                return;
-                            }
+            if (setLivingRatioTask.tryLock()){
+                log.info("The set lstaking reward task is starting ...");
+                SetLivingRatio setLivingRatio = setLivingRatioRepository.findFirstBySetLivingRatioAndTransactionFailOrderById(false, false);
+                if (null != setLivingRatio) {
+                    String epoch = setLivingRatio.getEpoch();
+                    String tokenId = setLivingRatio.getTokenId();
+                    GridStakeReward gridStakeReward = stakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
+                    String txHash;
+                    int j = 0;
+                    do {
+                        txHash = web3jUtils.setStakingReward(epoch, tokenId, gridStakeReward.getStakingReward(), gridStakeReward.getValidStakingAmount());
+                        j++;
+                        try {
+                            TimeUnit.MILLISECONDS.sleep(10000);
+                        } catch (InterruptedException e) {
+                            SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
+                            return;
+                        }
+                    } while (j < 20 && (null == txHash || txHash.isEmpty()));
+                    try {
+                        TransactionReceipt txReceipt = web3jUtils.waitForTransactionReceipt(txHash);
+                        // If status in response equals 1 the transaction was successful. If it is equals 0 the transaction was reverted by EVM.
+                        if (Integer.parseInt(txReceipt.getStatus().substring(2), 16) == 0) {
+                            log.error("==========>set staking reward failed txHash {} revert reason: {}", txHash, txReceipt.getRevertReason());
+                            setLivingRatio.setTransactionFail(true);
+                            setLivingRatio.setTxHash(txHash);
+                            setLivingRatio.setReason(txReceipt.getRevertReason());
+                            setLivingRatioRepository.save(setLivingRatio);
+                            SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
+                            return;
+                        }
+                    } catch (TransactionException exception) {
+                        if (StringUtils.contains(exception.toString(), "Transaction receipt was not generated after")) {
+                            setLivingRatio.setTransactionFail(true);
+                            setLivingRatio.setTxHash(txHash);
+                            setLivingRatio.setReason(exception.toString());
+                            setLivingRatioRepository.save(setLivingRatio);
+                            SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
+                            return;
                         }
                     }
-                } else {
-                    finish = true;
-                }
-                if (finish){
-                    setLivingRatio.setSetLivingRatio(true);
                     setLivingRatio.setTxHash(txHash);
+                    setLivingRatio.setSetLivingRatio(true);
                     setLivingRatioRepository.save(setLivingRatio);
                 }
             }
-        }catch (Exception e){
-            log.error("==========>setLivingRatio Task failed reason:", e);
-        }finally {
+        } catch (Exception e){
+            log.error("==========>set staking reward Task failed reason:", e);
+        } finally {
+            setLivingRatioTask.unlock();
             SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
         }
     }

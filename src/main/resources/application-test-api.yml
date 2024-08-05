@@ -45,21 +45,14 @@ contracts:
   step: 500
   enabled: true
   contractList:
-    -
-      name: 'StakingManager'
-      address: '0xC832C80a904eF725FFdC302EC9fD855029bCe29C'
+    - name: 'NodePoolFactory' # CreateNodePool
+      address: '0xFc832266A4485aF55447fD519827130C5C3B3564'
       enabled: true
-    -
-      name: 'NuLinkStakingPool'
-      address: '0xD0F05a39ed08165FBe28493353B11939001a4c4D'
+    - name: 'NodePoolStakingManager' # OperatorBonded
+      address: '0x7422a2938A29E3E2e82DD0Ab118061797e75Deb9'
       enabled: true
-    -
-      name: 'NuLinkStakingSetting'
-      address: '0x20986933a4440B0E1ff36Ea09B6dF5c4a3F41f75'
-      enabled: true
-    -
-      name: 'NLKFaucet'
-      address: '0x3cC6FC1035465d5b238F04097dF272Fe9b60EB94'
+    - name: 'NuLinkStakingSetting'
+      address: '0xc5b9384d4b3893f4A47E5a1fe7936Dacd5EBE2Dc'
       enabled: true
 
 web3j:

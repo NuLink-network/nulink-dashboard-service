@@ -1,5 +1,6 @@
-package com.nulink.livingratio.entity;
+package com.nulink.livingratio.entity.event;
 
+import com.nulink.livingratio.entity.BaseEntity;
 import lombok.Data;
 
 import javax.persistence.Column;
@@ -15,7 +16,7 @@ import javax.persistence.Table;
         @Index(name = "epoch_index", columnList = "epoch"),
         @Index(name = "event_index", columnList = "event")
 })
-public class NodePoolEvents extends BaseEntity{
+public class NodePoolEvents extends BaseEntity {
 
     @Column(name = "tx_hash", nullable = false, unique = true)
     private String txHash;

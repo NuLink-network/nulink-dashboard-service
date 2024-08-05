@@ -6,12 +6,15 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nulink.livingratio.constant.NodePoolEventEnum;
 import com.nulink.livingratio.entity.*;
 import com.nulink.livingratio.entity.event.Bond;
-import com.nulink.livingratio.entity.event.StakingEvent;
+import com.nulink.livingratio.entity.event.CreateNodePoolEvent;
+import com.nulink.livingratio.entity.event.EpochFeeRateEvent;
+import com.nulink.livingratio.entity.event.NodePoolEvents;
 import com.nulink.livingratio.repository.BondRepository;
-import com.nulink.livingratio.repository.PersonalStakeRepository;
 import com.nulink.livingratio.repository.GridStakeRewardRepository;
+import com.nulink.livingratio.repository.NodePoolEventsRepository;
 import com.nulink.livingratio.utils.HttpClientUtil;
 import com.nulink.livingratio.utils.RedisService;
 import com.nulink.livingratio.utils.Web3jUtils;
@@ -39,7 +42,6 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.*;
@@ -52,16 +54,6 @@ public class GridStakeRewardService {
 
     private static final Object countPreviousEpochStakeRewardTaskKey = new Object();
     private static boolean lockCountPreviousEpochStakeRewardTaskFlag = false;
-
-    private static final Object generateCurrentEpochValidStakeRewardTaskKey = new Object();
-    private static boolean generateCurrentEpochValidStakeRewardTaskFlag = false;
-
-    private static final Object livingRatioTaskKey = new Object();
-    private static boolean livingRatioTaskFlag = false;
-
-    private final static String STAKE_EVENT = "stake";
-
-    private final static String UN_STAKE_EVENT = "unstake";
 
     private final static String PING = "/ping";
 
@@ -76,41 +68,41 @@ public class GridStakeRewardService {
     private String porterServiceUrl;
 
     private final GridStakeRewardRepository stakeRewardRepository;
-    private final PersonalStakeRepository stakeRepository;
     private final BondRepository bondRepository;
     private final Web3jUtils web3jUtils;
     private final IncludeUrsulaService includeUrsulaService;
-
     private final RedisService redisService;
+    private final NodePoolEventsRepository nodePoolEventsRepository;
+    private final CreateNodePoolEventService createNodePoolEventService;
+    private final EpochFeeRateEventService epochFeeRateEventService;
 
-    private final ValidStakingAmountService validStakingAmountService;
 
-    private final ContractOffsetService contractOffsetService;
     @Resource
     private PlatformTransactionManager platformTransactionManager;
     @Autowired
     private StakeRewardOverviewService stakingRewardOverviewService;
 
-    private RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Resource
     private RedissonClient redissonClient;
 
     public GridStakeRewardService(GridStakeRewardRepository stakeRewardRepository,
-                                  PersonalStakeRepository stakeRepository,
                                   BondRepository bondRepository,
                                   Web3jUtils web3jUtils,
-                                  IncludeUrsulaService includeUrsulaService, RedisService redisService,
-                                  ValidStakingAmountService validStakingAmountService,
-                                  ContractOffsetService contractOffsetService, RedisTemplate<String, String> redisTemplate) {
+                                  IncludeUrsulaService includeUrsulaService,
+                                  RedisService redisService,
+                                  NodePoolEventsRepository nodePoolEventsRepository,
+                                  CreateNodePoolEventService createNodePoolEventService, EpochFeeRateEventService epochFeeRateEventService,
+                                  RedisTemplate<String, String> redisTemplate) {
         this.stakeRewardRepository = stakeRewardRepository;
-        this.stakeRepository = stakeRepository;
         this.bondRepository = bondRepository;
         this.web3jUtils = web3jUtils;
         this.includeUrsulaService = includeUrsulaService;
         this.redisService = redisService;
-        this.validStakingAmountService = validStakingAmountService;
-        this.contractOffsetService = contractOffsetService;
+        this.nodePoolEventsRepository = nodePoolEventsRepository;
+        this.createNodePoolEventService = createNodePoolEventService;
+        this.epochFeeRateEventService = epochFeeRateEventService;
         this.redisTemplate = redisTemplate;
     }
 
@@ -204,8 +196,8 @@ public class GridStakeRewardService {
     }*/
 
     @Async
-    @Scheduled(cron = "0 0 * * * ?")
-    //@Scheduled(cron = "0 0/5 * * * ? ")
+    //@Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(cron = "0 0/5 * * * ? ")
     public void livingRatio() {
         RLock fairLock = redissonClient.getFairLock("livingRatioTaskKey");
 
@@ -218,7 +210,7 @@ public class GridStakeRewardService {
 
                 String epoch = web3jUtils.getCurrentEpoch();
                 if (Integer.parseInt(epoch) < 1){
-                    GridStakeRewardService.livingRatioTaskFlag = false;
+                    fairLock.unlock();
                     return;
                 }
                 log.info("living ratio task start ...........................");
@@ -299,7 +291,7 @@ public class GridStakeRewardService {
     }
 
     @Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
+    //@Scheduled(cron = "0 0/1 * * * ? ")
     public void countPreviousEpochStakeReward(){
 
         synchronized (countPreviousEpochStakeRewardTaskKey) {
@@ -349,7 +341,7 @@ public class GridStakeRewardService {
                     stakeReward.setValidStakingAmount(new BigDecimal(stakeReward.getStakingAmount()).multiply(new BigDecimal(stakeReward.getLivingRatio())).setScale(0, RoundingMode.HALF_UP).toString());
                 }
             }
-            String totalValidStakingAmount = sum(stakeRewards.stream().map(GridStakeReward::getValidStakingAmount).collect(Collectors.toList()));
+            String totalValidStakingAmount = sum(stakeRewards.stream().map(GridStakeReward::getValidStakingAmount).filter(Objects::nonNull).collect(Collectors.toList()));
             String currentEpochReward = web3jUtils.getEpochReward(epoch);
             for (GridStakeReward stakeReward : stakeRewards) {
                 if (new BigDecimal(totalValidStakingAmount).compareTo(BigDecimal.ZERO) > 0){
@@ -370,22 +362,6 @@ public class GridStakeRewardService {
             sum = sum.add(new BigDecimal(s));
         }
         return sum.toString();
-    }
-
-    private String getStakingAmount(String stakingAddress, String epochTime){
-        StakingEvent unStake = stakeRepository.findFirstByUserAndEventAndCreateTimeBeforeOrderByCreateTimeDesc(stakingAddress, UN_STAKE_EVENT, new Timestamp(Long.parseLong(epochTime) * 1000));
-        List<StakingEvent> stakes;
-        if (unStake != null) {
-            Timestamp unStakeCreateTime = unStake.getCreateTime();
-            stakes = stakeRepository.findAllByUserAndEventAndCreateTimeBetween(stakingAddress, STAKE_EVENT, unStakeCreateTime, new Timestamp(Long.parseLong(epochTime) * 1000));
-        } else {
-            stakes = stakeRepository.findAllByUser(stakingAddress);
-        }
-        if (stakes.isEmpty()){
-            return BigDecimal.ZERO.toString();
-        }
-        List<BigDecimal> amounts = stakes.stream().map(stake -> new BigDecimal(stake.getAmount())).collect(Collectors.toList());
-        return amounts.stream().reduce(BigDecimal.ZERO, BigDecimal::add).toString();
     }
 
     private String getIpAddress(String url){
@@ -482,7 +458,7 @@ public class GridStakeRewardService {
     }
 
     public GridStakeReward nodeInfo(String stakingProvider){
-        StakingEvent stake = stakeRepository.findFirstByUserAndEventOrderByCreateTimeDesc(stakingProvider, STAKE_EVENT);
+        NodePoolEvents stake = nodePoolEventsRepository.findFirstByUserAndEventOrderByCreateTimeDesc(stakingProvider, NodePoolEventEnum.STAKING.getName());
         if (null == stake){
             return null;
         }
@@ -538,26 +514,38 @@ public class GridStakeRewardService {
     }
 
     public GridStakeReward findByEpochAndTokenId(String tokenId, String epoch){
+        String cacheKey = "GridStakeReward" + ":" + epoch + ":" +tokenId;
+        try {
+            Object value = redisService.get(cacheKey);
+            if (value != null) {
+                String v = value.toString();
+                return JSONObject.parseObject(v, GridStakeReward.class);
+            }
+        } catch (Exception e) {
+            log.error("----------- GridStakeReward findByEpochAndTokenId redis read error: {}", e.getMessage());
+        }
         String currentEpoch = web3jUtils.getCurrentEpoch();
+        GridStakeReward gridStakeReward = null;
         if (currentEpoch.equals(epoch)){
             List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(epoch);
             countStakeReward(stakeRewards, epoch);
             for (GridStakeReward stakeReward : stakeRewards) {
                 if (stakeReward.getTokenId().equals(tokenId)){
-                    return stakeReward;
+                    gridStakeReward = stakeReward;
                 }
             }
         } else {
-            return stakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
+            gridStakeReward = stakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
         }
-        return null;
-    }
-
-    @Async
-    @Scheduled(cron = "0 0/10 * * * ? ")
-    public void renewalFindPageCache() {
-        String currentEpoch = web3jUtils.getCurrentEpoch();
-        renewalFindPageCache(currentEpoch, 10, 1, null, null);
+        if (gridStakeReward != null){
+            try {
+                String pvoStr = JSON.toJSONString(gridStakeReward, SerializerFeature.WriteNullStringAsEmpty);
+                redisService.set(cacheKey, pvoStr, 20, TimeUnit.SECONDS);
+            }catch (Exception e){
+                log.error("GridStakeReward findByEpochAndTokenId  redis write error：{}", e.getMessage());
+            }
+        }
+        return gridStakeReward;
     }
 
     public void deleteAllKeys() {
@@ -568,111 +556,40 @@ public class GridStakeRewardService {
         }
     }
 
-    public Page<GridStakeReward> renewalFindPageCache(String epoch, int pageSize, int pageNum, String orderBy, String sorted) {
-        long startTime = System.currentTimeMillis();
-        log.info("----------- renewalFindPageCache startTime:{}", startTime);
-        // 构造Key的逻辑封装
-        String stakeRewardPageKey = buildKey("stakeRewardPage", epoch, pageSize, pageNum, orderBy, sorted);
-        String stakeRewardPageCountKey = buildKey("stakeRewardPageCount", epoch, pageSize, pageNum, orderBy, sorted);
-
-        List<GridStakeReward> stakeRewards = new ArrayList<>();
-
-        String stakeRewardQueryKey = buildKey("stakeRewardQueryKey", epoch, pageSize, pageNum, orderBy, sorted);
-        if (!redisService.setNx(stakeRewardQueryKey, stakeRewardQueryKey + "_Lock", 30, TimeUnit.SECONDS )) {
-            throw new RuntimeException("The system is busy, please try again later");
-        }
-
-        long redisLockEndTime = System.currentTimeMillis();
-        log.info("----------- renewalFindPageCache Redis lock time: {}ms", redisLockEndTime - startTime);
-
-        Sort sort = resolveSort(orderBy, sorted);
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, sort);
-
-        Specification<GridStakeReward> specification = (root, query, criteriaBuilder) -> {
-            if (StringUtils.isNotEmpty(epoch)) {
-                return criteriaBuilder.equal(root.get("epoch"), epoch);
-            }
-            return null;
-        };
-
-        Page<GridStakeReward> page = stakeRewardRepository.findAll(specification, pageable);
-        List<GridStakeReward> content = page.getContent();
-        StakeRewardOverview overview = stakingRewardOverviewService.findByEpoch(epoch);
-        if (null != overview){
-            String validStakingAmountTotal = overview.getValidStakingAmount();
-            String currentEpochReward = overview.getCurrentEpochReward();
-            if (!"0".equals(validStakingAmountTotal)){
-                for (GridStakeReward stakeReward : content) {
-                    String validStakingAmount = new BigDecimal(stakeReward.getStakingAmount()).multiply(new BigDecimal(stakeReward.getLivingRatio())).setScale(0, RoundingMode.HALF_UP).toString();
-                    stakeReward.setValidStakingAmount(validStakingAmount);
-                    String validStakingQuota = new BigDecimal(stakeReward.getValidStakingAmount()).divide(new BigDecimal(validStakingAmountTotal),6, RoundingMode.HALF_UP).toString();
-                    stakeReward.setValidStakingQuota(validStakingQuota);
-                    stakeReward.setStakingReward(new BigDecimal(validStakingQuota).multiply(new BigDecimal(currentEpochReward)).setScale(0, RoundingMode.HALF_UP).toString());
-                }
-            }
-        }
-        stakeRewards.addAll(content);
-
-        long dataProcessingEndTime = System.currentTimeMillis();
-        log.info("----------- renewalFindPageCache Data processing time: {}ms", dataProcessingEndTime - redisLockEndTime);
-
-        try {
-            String pvoStr = JSON.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
-            log.info("----------- renewalFindPageCache stakeReward find page redis write pvoStr: {}", pvoStr);
-            log.info("----------- renewalFindPageCache stakeReward find page redis write CountKey: {}", page.getTotalElements());
-            redisService.set(stakeRewardPageKey, pvoStr, 15, TimeUnit.MINUTES);
-            redisService.set(stakeRewardPageCountKey, String.valueOf(page.getTotalElements()), 15, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            log.error("----------- renewalFindPageCache StakeReward find page redis write error: {}", e.getMessage());
-        }
-        long redisWriteEndTime = System.currentTimeMillis();
-        log.info("----------- renewalFindPageCache Redis write time: {}ms", redisWriteEndTime - dataProcessingEndTime);
-        redisService.del(stakeRewardQueryKey);
-        long endTime = System.currentTimeMillis();
-        log.info("----------- renewalFindPageCache Total execution time: {}ms", endTime - startTime);
-        return new PageImpl<>(stakeRewards, pageable, page.getTotalElements());
-    }
-
     public Page<GridStakeReward> findPage(String epoch, int pageSize, int pageNum, String orderBy, String sorted) {
         long startTime = System.currentTimeMillis();
-        log.info("----------- findPage startTime:{}", startTime);
+        log.info("findPage startTime:{}", startTime);
         String currentEpoch = web3jUtils.getCurrentEpoch();
-        if (epoch.equals(currentEpoch) && ("stakingAmount".equalsIgnoreCase(orderBy) || "stakingReward".equalsIgnoreCase(orderBy) || "validStakingAmount".equalsIgnoreCase(orderBy) || "validStakingQuota".equalsIgnoreCase(orderBy))){
+        if (epoch.equals(currentEpoch)){
             return findCurrentEpochPageOrderHelper(pageSize, pageNum, orderBy, sorted);
         }
-        // 构造Key的逻辑封装
+
         String stakeRewardPageKey = buildKey("stakeRewardPage", epoch, pageSize, pageNum, orderBy, sorted);
         String stakeRewardPageCountKey = buildKey("stakeRewardPageCount", epoch, pageSize, pageNum, orderBy, sorted);
 
         List<GridStakeReward> stakeRewards = new ArrayList<>();
         try {
             Object listValue = redisService.get(stakeRewardPageKey);
-            log.info("----------- stakeReward find page redis read listValue: {}", listValue);
+            log.info("stakeReward find page redis read listValue: {}", listValue);
             Object countValue = redisService.get(stakeRewardPageCountKey);
-            log.info("----------- stakeReward find page redis read countValue: {}", countValue);
+            log.info("stakeReward find page redis read countValue: {}", countValue);
             if (listValue != null && countValue != null) {
                 String v = listValue.toString();
                 stakeRewards = JSONObject.parseArray(v, GridStakeReward.class);
                 if (!stakeRewards.isEmpty()){
                     long endTime = System.currentTimeMillis();
-                    log.info("----------- findPage Redis read time: " + (endTime - startTime) + "ms");
+                    log.info("findPage Redis read time: " + (endTime - startTime) + "ms");
                     return new PageImpl<>(stakeRewards, PageRequest.of(pageNum - 1, pageSize), Long.parseLong(countValue.toString()));
                 }
             }
         } catch (Exception e) {
-            log.error("----------- StakeReward find page redis read error: {}", e.getMessage());
+            log.error("StakeReward find page redis read error: {}", e.getMessage());
         }
-
-        long redisReadEndTime = System.currentTimeMillis();
-        log.info("----------- Redis read time: {}ms", redisReadEndTime - startTime);
 
         String stakeRewardQueryKey = buildKey("stakeRewardQueryKey", epoch, pageSize, pageNum, orderBy, sorted);
         if (!redisService.setNx(stakeRewardQueryKey, stakeRewardQueryKey + "_Lock", 30, TimeUnit.SECONDS )) {
             throw new RuntimeException("The system is busy, please try again later");
         }
-
-        long redisLockEndTime = System.currentTimeMillis();
-        log.info("----------- Redis lock time: {}ms", redisLockEndTime - redisReadEndTime);
 
         Sort sort = resolveSort(orderBy, sorted);
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, sort);
@@ -704,9 +621,6 @@ public class GridStakeRewardService {
         }
         stakeRewards.addAll(content);
 
-        long dataProcessingEndTime = System.currentTimeMillis();
-        log.info("----------- Data processing time: {}ms", dataProcessingEndTime - redisLockEndTime);
-
         try {
             String pvoStr = JSON.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
             log.info("----------- stakeReward find page redis write pvoStr: {}", pvoStr);
@@ -722,7 +636,6 @@ public class GridStakeRewardService {
             log.error("----------- StakeReward find page redis write error: {}", e.getMessage());
         }
         long redisWriteEndTime = System.currentTimeMillis();
-        log.info("----------- Redis write time: {}ms", redisWriteEndTime - dataProcessingEndTime);
         redisService.del(stakeRewardQueryKey);
         long endTime = System.currentTimeMillis();
         log.info("----------- Total execution time: {}ms", endTime - startTime);
@@ -749,6 +662,12 @@ public class GridStakeRewardService {
             sort = Sort.by("validStakingAmount");
         } else if ("validStakingQuota".equalsIgnoreCase(orderBy)) {
             sort = Sort.by("validStakingQuota");
+        } else if ("stakingAmount".equalsIgnoreCase(orderBy)) {
+            sort = Sort.by("stakingAmount");
+        } else if ("currentFeeRatio".equalsIgnoreCase(orderBy)) {
+            sort = Sort.by("currentFeeRatio");
+        } else if ("nextFeeRatio".equalsIgnoreCase(orderBy)) {
+            sort = Sort.by("nextFeeRatio");
         } else {
             sort = Sort.by("createTime");
         }
@@ -809,30 +728,48 @@ public class GridStakeRewardService {
             log.error("Error reading from cache", e);
         }
 
-        return loadFromDatabaseAndCacheResults(cacheKey, countCacheKey, epoch, pageSize, pageNum, orderBy, sortDirection, stakeRewards);
+        return loadFromDatabaseAndCacheResults(cacheKey, countCacheKey, epoch, pageSize, pageNum, orderBy, sortDirection);
     }
 
-    private Map<String,String> loadFromDatabaseAndCacheResults(String cacheKey, String countCacheKey, String epoch, int pageSize, int pageNum, String orderBy, String sortDirection, List<GridStakeReward> stakeRewards) {
+    private Map<String,String> loadFromDatabaseAndCacheResults(String cacheKey, String countCacheKey, String epoch, int pageSize, int pageNum, String orderBy, String sortDirection) {
         String stakeRewardQueryKey = buildCacheKey("stakeRewardCurrentEpochQuery", epoch, pageSize, pageNum, orderBy, sortDirection);
         Boolean b = redisService.setNx(stakeRewardQueryKey, stakeRewardQueryKey + "_Lock", 30, TimeUnit.SECONDS);
         if (!b){
             throw new RuntimeException("The system is busy, please try again later");
         }
         Map<String, String> result = new HashMap<>();
-        if (stakeRewards.isEmpty()) {
-            try {
-                if (stakeRewards.isEmpty()) { // Double-checked locking
-                    List<GridStakeReward> all = findAllByEpoch(epoch);
-                    result.put("size", String.valueOf(all.size()));
-                    countStakeReward(all, epoch);
-                    stakeRewards = pageHelper(pageSize, pageNum, orderBy, sortDirection, all);
-                    String pvoStr = JSONObject.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
-                    result.put("stakeRewards", pvoStr);
-                    cacheResults(cacheKey, countCacheKey, stakeRewards, all.size());
+        try {
+            int nextEpoch = Integer.parseInt(epoch) + 1;
+
+            List<GridStakeReward> all = stakeRewardRepository.findAllByEpoch(epoch);
+            Set<String> tokenIds = all.stream().map(GridStakeReward::getTokenId).collect(Collectors.toSet());
+            List<CreateNodePoolEvent> events = createNodePoolEventService.findAll();
+            for (CreateNodePoolEvent event : events) {
+                if (!tokenIds.contains(event.getTokenId())) {
+                    GridStakeReward gridStakeReward = new GridStakeReward();
+                    gridStakeReward.setEpoch(epoch);
+                    gridStakeReward.setTokenId(event.getTokenId());
+                    gridStakeReward.setGridAddress(event.getNodePoolAddress());
+                    gridStakeReward.setStakingProvider(event.getOwnerAddress());
+                    gridStakeReward.setStakingAmount("0");
+                    gridStakeReward.setStakingReward("0");
+                    gridStakeReward.setValidStakingAmount("0");
+                    gridStakeReward.setValidStakingQuota("0");
+                    gridStakeReward.setStakingNumber(0);
+                    gridStakeReward.setLivingRatio("0");
+                    gridStakeReward.setCurrentFeeRatio(epochFeeRateEventService.getFeeRate(event.getTokenId(), epoch));
+                    gridStakeReward.setNextFeeRatio(epochFeeRateEventService.getFeeRate(event.getTokenId(), String.valueOf(Integer.parseInt(epoch) + 1)));
+                    all.add(gridStakeReward);
                 }
-            }catch (Exception e){
-                log.error("Error reading from database", e);
             }
+            result.put("size", String.valueOf(all.size()));
+            countStakeReward(all, epoch);
+            List<GridStakeReward> stakeRewards = pageHelper(pageSize, pageNum, orderBy, sortDirection, all);
+            String pvoStr = JSONObject.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
+            result.put("stakeRewards", pvoStr);
+            cacheResults(cacheKey, countCacheKey, stakeRewards, all.size());
+        }catch (Exception e){
+            log.error("Error reading from database", e);
         }
         redisService.del(stakeRewardQueryKey);
         return result;
@@ -841,8 +778,8 @@ public class GridStakeRewardService {
     private void cacheResults(String cacheKey, String countCacheKey, List<GridStakeReward> stakeRewards, long count) {
         try {
             String pvoStr = JSONObject.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
-            redisService.set(cacheKey, pvoStr, 15, TimeUnit.MINUTES);
-            redisService.set(countCacheKey, String.valueOf(count), 15, TimeUnit.MINUTES);
+            redisService.set(cacheKey, pvoStr, 20, TimeUnit.SECONDS);
+            redisService.set(countCacheKey, String.valueOf(count), 20, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.error("Error writing to cache", e);
         }
@@ -861,6 +798,12 @@ public class GridStakeRewardService {
             comparator = Comparator.comparing(sr -> new BigDecimal(sr.getValidStakingAmount()));
         } else if ("validStakingQuota".equalsIgnoreCase(orderBy)) {
             comparator = Comparator.comparing(sr -> new BigDecimal(sr.getValidStakingQuota()));
+        } else if ("stakingNumber".equalsIgnoreCase(orderBy)) {
+            comparator = Comparator.comparing(GridStakeReward::getStakingNumber);
+        } else if ("currentFeeRatio".equalsIgnoreCase(orderBy)){
+            comparator = Comparator.comparing(sr -> new BigDecimal(sr.getCurrentFeeRatio()));
+        } else if ("nextFeeRatio".equalsIgnoreCase(orderBy)){
+            comparator = Comparator.comparing(sr -> new BigDecimal(sr.getNextFeeRatio()));
         }
 
         if (comparator != null) {
@@ -935,15 +878,13 @@ public class GridStakeRewardService {
             List<GridStakeReward> stakeRewards = new ArrayList<>();
             Pageable pageable = PageRequest.of(0, batchSize);
             Page<GridStakeReward> currentPage;
-
             do {
                 currentPage = stakeRewardRepository.findAllByEpoch(epoch, pageable);
                 stakeRewards.addAll(currentPage.getContent());
                 pageable = pageable.next();
             } while (currentPage.hasNext());
-
             return stakeRewards;
-        }catch (Exception e){
+        } catch (Exception e){
             throw new RuntimeException(e);
         }
     }

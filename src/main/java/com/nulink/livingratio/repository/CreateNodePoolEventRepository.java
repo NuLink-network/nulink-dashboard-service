@@ -2,6 +2,7 @@ package com.nulink.livingratio.repository;
 
 import com.nulink.livingratio.entity.event.CreateNodePoolEvent;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,4 +17,6 @@ public interface CreateNodePoolEventRepository extends PagingAndSortingRepositor
 
     CreateNodePoolEvent findByTokenId(String tokenId);
 
+    @Query(value = "select count(1) from card_slot cs where start_timestamp <= now() and end_timestamp > now()", nativeQuery = true)
+    Integer stakeGridsForAuction();
 }

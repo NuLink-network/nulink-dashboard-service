@@ -1,0 +1,874 @@
+[
+	{
+		"inputs": [
+			{
+				"internalType": "contract IAddressController",
+				"name": "_addrCtrl",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "time",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			}
+		],
+		"name": "Claim",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_rewardAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "time",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint16",
+				"name": "_lastEpoch",
+				"type": "uint16"
+			}
+		],
+		"name": "ClaimReward",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "previousOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_ratio",
+				"type": "uint256"
+			}
+		],
+		"name": "SetDecayRatio",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_block",
+				"type": "uint256"
+			}
+		],
+		"name": "SetDecoyPeriod",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			}
+		],
+		"name": "SetNLKPerBlock",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "_pause",
+				"type": "bool"
+			}
+		],
+		"name": "SetPause",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "time",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			}
+		],
+		"name": "Stake",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "time",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			}
+		],
+		"name": "UnstakeAll",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "addrCtrl",
+		"outputs": [
+			{
+				"internalType": "contract IAddressController",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "calcUserReward",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "claim",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "claimReward",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint16",
+				"name": "",
+				"type": "uint16"
+			}
+		],
+		"name": "epochInfo",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalUser",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalEpochAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalValidStakingAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "finishSetLiveRatio",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getCurrentEpoch",
+		"outputs": [
+			{
+				"internalType": "uint16",
+				"name": "",
+				"type": "uint16"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_time",
+				"type": "uint256"
+			}
+		],
+		"name": "getEpoch",
+		"outputs": [
+			{
+				"internalType": "uint16",
+				"name": "",
+				"type": "uint16"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getSTKAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "contract INuLinkStakingSetting",
+				"name": "_stakingSetting",
+				"type": "address"
+			},
+			{
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			}
+		],
+		"name": "getStakingEpochReward",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "getStartStakingTimestamp",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTime",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			},
+			{
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			}
+		],
+		"name": "getUserEpochInfo",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "epochUnstakeAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "epochAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "liveRatio",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "validStakingAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "epochActiveAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "calcRewardFlag",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "maxStakeAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "maxStakingAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "minStakingAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "minimumStakeAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			},
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			},
+			{
+				"internalType": "uint16",
+				"name": "_liveRatio",
+				"type": "uint16"
+			}
+		],
+		"name": "modifyLiveRatio",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "paused",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "pendingUserReward",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "_pendingReward",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "rolesOf",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "address payable",
+				"name": "beneficiary",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "authorizer",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			},
+			{
+				"internalType": "bool",
+				"name": "_isfinished",
+				"type": "bool"
+			},
+			{
+				"internalType": "address[]",
+				"name": "_stakingProviders",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint16[]",
+				"name": "_liveRatios",
+				"type": "uint16[]"
+			}
+		],
+		"name": "setLiveRatio",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint96",
+				"name": "_maxAmount",
+				"type": "uint96"
+			}
+		],
+		"name": "setMaxStakeAmount",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint96",
+				"name": "_minAmount",
+				"type": "uint96"
+			}
+		],
+		"name": "setMinimumStakeAmount",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "setPause",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			},
+			{
+				"internalType": "address payable",
+				"name": "beneficiary",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "authorizer",
+				"type": "address"
+			},
+			{
+				"internalType": "uint96",
+				"name": "amount",
+				"type": "uint96"
+			}
+		],
+		"name": "stake",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "stakes",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "nuLinkStake",
+				"type": "uint96"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalStakingAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "unstakeAll",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userInfo",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "futureAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "pendingRewardAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "unStakingAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "stakingStartTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "unStakingTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint16",
+				"name": "lastRewardEpoch",
+				"type": "uint16"
+			},
+			{
+				"internalType": "uint16",
+				"name": "claimunstakeEpoch",
+				"type": "uint16"
+			},
+			{
+				"internalType": "address",
+				"name": "beneficiary",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "authorizer",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "stakingProvider",
+				"type": "address"
+			}
+		],
+		"name": "userStakes",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "nuLinkStake",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint96",
+				"name": "nuNextStake",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint96",
+				"name": "myClaimableDeposits",
+				"type": "uint96"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "stakingProvider",
+				"type": "address"
+			},
+			{
+				"internalType": "uint16",
+				"name": "_epoch",
+				"type": "uint16"
+			}
+		],
+		"name": "userStakes",
+		"outputs": [
+			{
+				"internalType": "uint96",
+				"name": "nuLinkStake",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint96",
+				"name": "nuNextStake",
+				"type": "uint96"
+			},
+			{
+				"internalType": "uint96",
+				"name": "myClaimableDeposits",
+				"type": "uint96"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
