@@ -17,14 +17,22 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
         switch (type) {
             case STAKE:
                 return getStakeEvent();
+            case STAKE_DESC:
+                return getStakeEventDesc();
             case UN_STAKE_ALL:
                 return getUnStakeAllEvent();
+            case UN_STAKE_ALL_DESC:
+                return getUnStakeAllEventDesc();
             case OPERATOR_BONDED:
                 return getOperatorBondedEvent();
             case CLAIM:
                 return getCliamEvent();
+            case CLAIM_DESC:
+                return getCliamEventDesc();
             case CLAIM_REWARD:
                 return getCliamRewardEvent();
+            case CLAIM_REWARD_DESC:
+                return getCliamRewardEventDesc();
             case SET_NEXT_EPOCH_FEE_RATE:
                 return getSetNextEpochFeeRateEvent();
             case SET_NEXT_EPOCH_FEE_RATE_DESC:
@@ -50,11 +58,33 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
                 ));
     }
 
+    public static Event getStakeEventDesc() {
+        return new Event("Staking",
+                Arrays.asList(
+                        // _amount
+                        new TypeReference<Uint256>(false) {},
+                        // _epoch
+                        new TypeReference<Uint16>(false) {}
+                ));
+    }
+
     public static Event getUnStakeAllEvent() {
         return new Event("UnStaking",
                 Arrays.asList(
                         // _user
                         new TypeReference<Address>(false) {},
+                        // _unlockAmount
+                        new TypeReference<Uint256>(false) {},
+                        // _lockAmount
+                        new TypeReference<Uint256>(false) {},
+                        // _epoch
+                        new TypeReference<Uint16>(false) {}
+                ));
+    }
+
+    public static Event getUnStakeAllEventDesc() {
+        return new Event("UnStaking",
+                Arrays.asList(
                         // _unlockAmount
                         new TypeReference<Uint256>(false) {},
                         // _lockAmount
@@ -88,11 +118,33 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
                 ));
     }
 
+    public static Event getCliamEventDesc() {
+        return new Event("Claim",
+                Arrays.asList(
+                        // amount
+                        new TypeReference<Uint256>(true) {},
+                        // epoch
+                        new TypeReference<Uint16>(true) {}
+                ));
+    }
+
     public static Event getCliamRewardEvent() {
         return new Event("ClaimReward",
                 Arrays.asList(
                         // user
                         new TypeReference<Address>(true) {},
+                        // _amount
+                        new TypeReference<Uint256>(true) {},
+                        // _lastRewardEpoch
+                        new TypeReference<Uint256>(true) {},
+                        // _lastEpoch
+                        new TypeReference<Uint16>(true) {}
+                ));
+    }
+
+    public static Event getCliamRewardEventDesc() {
+        return new Event("ClaimReward",
+                Arrays.asList(
                         // _amount
                         new TypeReference<Uint256>(true) {},
                         // _lastRewardEpoch

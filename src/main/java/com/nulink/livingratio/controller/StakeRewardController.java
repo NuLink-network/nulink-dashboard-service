@@ -2,7 +2,6 @@ package com.nulink.livingratio.controller;
 
 import com.nulink.livingratio.entity.GridStakeReward;
 import com.nulink.livingratio.service.GridStakeRewardService;
-import com.nulink.livingratio.utils.Web3jUtils;
 import com.nulink.livingratio.vo.BaseResponse;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -24,17 +23,17 @@ public class StakeRewardController {
         this.stakeRewardService = stakeRewardService;
     }
 
-    @ApiOperation("node info")
-    @GetMapping("/nodeInfo")
-    public BaseResponse<GridStakeReward> nodeInfo(@RequestParam(value = "stakeProvider") String stakeProvider){
-        return BaseResponse.success(stakeRewardService.nodeInfo(stakeProvider));
-    }
-
     @ApiOperation("Stake Reward Info")
     @GetMapping("/findOne")
-    public BaseResponse<GridStakeReward> findStakeReward(@RequestParam(value = "stakeProvider") String stakeProvider,
+    public BaseResponse<GridStakeReward> findStakeReward(@RequestParam(value = "tokenId") String tokenId,
                                                          @RequestParam(value = "epoch") String epoch){
-        return BaseResponse.success(stakeRewardService.findByEpochAndStakingProvider(stakeProvider, epoch));
+        return BaseResponse.success(stakeRewardService.findByEpochAndTokenId(tokenId, epoch));
+    }
+
+    @ApiOperation(value = "Grid Info")
+    @GetMapping("/findOneByTokenId")
+    public BaseResponse<GridStakeReward> findByTokenId(@RequestParam(value = "tokenId") String tokenId){
+        return BaseResponse.success(stakeRewardService.findGridInfoByTokenId(tokenId));
     }
 
     @ApiOperation("find By TokenId And Epoch")
@@ -57,15 +56,12 @@ public class StakeRewardController {
         return BaseResponse.success(stakeRewardService.findPage(epoch, pageSize, pageNum, orderBy, sorted));
     }
 
-    /*@ApiOperation(value = "deleteCache")
+    @ApiOperation(value = "deleteCache")
     @GetMapping("deleteCache")
     public BaseResponse delete(){
-        *//*if (currentEpoch.equals(epoch)){
-            return BaseResponse.success(stakeRewardService.findCurrentEpochPage(pageSize, pageNum, orderBy, sorted));
-        }*//*
         stakeRewardService.deleteAllKeys();
         return BaseResponse.success(1);
-    }*/
+    }
 
     @ApiOperation(value = "Stake Reward list")
     @GetMapping("list/{epoch}")

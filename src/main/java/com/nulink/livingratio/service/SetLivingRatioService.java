@@ -20,6 +20,7 @@ import javax.annotation.Resource;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -52,7 +53,7 @@ public class SetLivingRatioService {
     @Transactional
     public void create(SetLivingRatio setLivingRatio){
         SetLivingRatio livingRatio = setLivingRatioRepository.findByEpochAndTokenId(setLivingRatio.getEpoch(), setLivingRatio.getTokenId());
-        if (ObjectUtils.isNotEmpty(livingRatio)){
+        if (ObjectUtils.isEmpty(livingRatio)){
             setLivingRatioRepository.save(setLivingRatio);
         }
     }
@@ -84,6 +85,12 @@ public class SetLivingRatioService {
                 if (livingRatios.isEmpty()){
                     List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(previousEpoch);
                     for (GridStakeReward stakeReward : stakeRewards) {
+                        if (StringUtils.isBlank(stakeReward.getStakingReward())){
+                            continue;
+                        }
+                        if (BigInteger.ZERO.compareTo(new BigInteger(stakeReward.getStakingReward())) == 0){
+                            continue;
+                        }
                         SetLivingRatio setLivingRatio = new SetLivingRatio();
                         setLivingRatio.setEpoch(previousEpoch);
                         setLivingRatio.setTokenId(stakeReward.getTokenId());
@@ -98,12 +105,14 @@ public class SetLivingRatioService {
             log.error("The set unLiving ratio task has failed", e);
         } finally {
             SetLivingRatioService.lockSetUnLivingRatioTaskFlag = false;
-            setUnLivingRatioTask.unlock();
+            if (setUnLivingRatioTask.isLocked()){
+                setUnLivingRatioTask.unlock();
+            }
         }
     }
 
     @Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
+  //  @Scheduled(cron = "0 0/1 * * * ? ")
     @Transactional
     public void setLivingRatio(){
         synchronized (setLivingRatioTaskKey) {
@@ -125,7 +134,7 @@ public class SetLivingRatioService {
                     String txHash;
                     int j = 0;
                     do {
-                        txHash = web3jUtils.setStakingReward(epoch, tokenId, gridStakeReward.getStakingReward(), gridStakeReward.getValidStakingAmount());
+                        txHash = web3jUtils.setStakingReward(epoch, tokenId, /*gridStakeReward.getStakingReward()*/ "1000000000000000000", gridStakeReward.getValidStakingAmount());
                         j++;
                         try {
                             TimeUnit.MILLISECONDS.sleep(10000);
@@ -164,7 +173,9 @@ public class SetLivingRatioService {
         } catch (Exception e){
             log.error("==========>set staking reward Task failed reason:", e);
         } finally {
-            setLivingRatioTask.unlock();
+            if (setLivingRatioTask.isLocked()){
+                setLivingRatioTask.unlock();
+            }
             SetLivingRatioService.lockSetLivingRatioTaskFlag = false;
         }
     }

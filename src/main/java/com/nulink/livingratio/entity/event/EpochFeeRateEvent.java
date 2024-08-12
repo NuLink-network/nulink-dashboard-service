@@ -11,7 +11,7 @@ import javax.persistence.Table;
 @Data
 @Entity
 @Table(name = "epoch_fee_rate_event", indexes = {
-        @Index(name = "token_id_index", columnList = "token_id", unique = true),
+        @Index(name = "token_id_index", columnList = "token_id"),
         @Index(name = "tx_hash_index", columnList = "tx_hash")
 })
 public class EpochFeeRateEvent extends BaseEntity {

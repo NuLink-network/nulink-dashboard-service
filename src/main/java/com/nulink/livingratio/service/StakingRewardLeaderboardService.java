@@ -127,7 +127,7 @@ public class StakingRewardLeaderboardService {
                     StakingRewardLeaderboard stakingRewardLeaderboard = new StakingRewardLeaderboard();
                     stakingRewardLeaderboard.setStakingProvider(stakeReward.getStakingProvider());
                     stakingRewardLeaderboard.setEpoch(previousEpoch);
-                    stakingRewardLeaderboard.setAccumulatedStakingReward(accumulatedStakingReward(stakeReward.getStakingProvider()));
+                    stakingRewardLeaderboard.setAccumulatedStakingReward(accumulatedStakingReward(stakeReward.getTokenId()));
                     leaderboardList.add(stakingRewardLeaderboard);
                 }
             }
@@ -156,8 +156,8 @@ public class StakingRewardLeaderboardService {
         }
     }
 
-    private String accumulatedStakingReward(String stakingProvider){
-        List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByStakingProvider(stakingProvider);
+    private String accumulatedStakingReward(String tokenId){
+        List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByTokenId(tokenId);
         BigDecimal accumulatedStakingReward = BigDecimal.ZERO;
         for (GridStakeReward stakeReward : stakeRewards) {
             String stakingReward = stakeReward.getStakingReward();

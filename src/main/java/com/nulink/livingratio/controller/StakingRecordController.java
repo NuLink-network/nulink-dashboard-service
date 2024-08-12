@@ -41,9 +41,10 @@ public class StakingRecordController {
     @ApiOperation(value = "Staking amount by stake grids")
     @GetMapping("findValidStaking")
     public BaseResponse<Page<ValidPersonalStakingAmount>> findValidStakingAmountByUser(@RequestParam(name = "userAddress") String userAddress,
+                                                                               @RequestParam(name = "epoch") String epoch,
                                                                                @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
                                                                                @RequestParam(name = "pageNum", defaultValue = "1") Integer pageNum){
-        Page<ValidPersonalStakingAmount> allByUserAddress = validPersonalStakingAmountService.findAllByUserAddress(userAddress, pageSize, pageNum);
+        Page<ValidPersonalStakingAmount> allByUserAddress = validPersonalStakingAmountService.findAllByUserAddress(userAddress, epoch, pageSize, pageNum);
         return BaseResponse.success(allByUserAddress);
     }
 

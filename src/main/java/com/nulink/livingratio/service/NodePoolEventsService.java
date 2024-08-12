@@ -27,24 +27,47 @@ public class NodePoolEventsService {
 
     private final ValidPersonalStakingAmountService validPersonalStakingAmountService;
 
+    private final PersonalStakingOverviewService personalStakingOverviewService;
+
     private final RedisService redisService;
 
     public NodePoolEventsService(NodePoolEventsRepository nodePoolEventsRepository,
                                  ValidPersonalStakingAmountService validPersonalStakingAmountService,
+                                 PersonalStakingOverviewService personalStakingOverviewService,
                                  RedisService redisService) {
         this.nodePoolEventsRepository = nodePoolEventsRepository;
         this.validPersonalStakingAmountService = validPersonalStakingAmountService;
+        this.personalStakingOverviewService = personalStakingOverviewService;
         this.redisService = redisService;
     }
 
     @Transactional
     public void save(NodePoolEvents nodePoolEvents) {
+        String cacheKey = "NODE_EVENT_HASH_" + nodePoolEvents.getTxHash();
+
+        if (redisService.hasKey(cacheKey)){
+            return;
+        } else {
+            redisService.set(cacheKey, nodePoolEvents.getTxHash(), 60, TimeUnit.SECONDS);
+        }
         NodePoolEvents event = nodePoolEventsRepository.findByTxHash(nodePoolEvents.getTxHash());
         if (event != null) {
             return;
         }
         if (nodePoolEvents.getEvent().equals(NodePoolEventEnum.STAKING.getName()) || nodePoolEvents.getEvent().equals(NodePoolEventEnum.UN_STAKING.getName())){
             validPersonalStakingAmountService.updateValidPersonalStakingAmount(nodePoolEvents);
+        }
+        if (nodePoolEvents.getEvent().equals(NodePoolEventEnum.STAKING.getName())){
+            personalStakingOverviewService.handleStakingEvent(nodePoolEvents);
+        }
+        if (nodePoolEvents.getEvent().equals(NodePoolEventEnum.UN_STAKING.getName())){
+            personalStakingOverviewService.handleUnStakingEvent(nodePoolEvents);
+        }
+        if (nodePoolEvents.getEvent().equals(NodePoolEventEnum.CLAIM.getName())){
+            personalStakingOverviewService.handleClaimEvent(nodePoolEvents);
+        }
+        if (nodePoolEvents.getEvent().equals(NodePoolEventEnum.CLAIM_REWARD.getName())){
+            personalStakingOverviewService.handleClaimRewardEvent(nodePoolEvents);
         }
         nodePoolEventsRepository.save(nodePoolEvents);
     }

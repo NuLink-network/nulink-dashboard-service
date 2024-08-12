@@ -1,7 +1,6 @@
 package com.nulink.livingratio.service;
 
 import com.nulink.livingratio.entity.event.EpochFeeRateEvent;
-import com.nulink.livingratio.entity.GridStakeReward;
 import com.nulink.livingratio.repository.EpochFeeRateEventRepository;
 import com.nulink.livingratio.repository.GridStakeRewardRepository;
 import com.nulink.livingratio.utils.Web3jUtils;
@@ -48,6 +47,16 @@ public class EpochFeeRateEventService {
 
     public String getFeeRate(String tokenId, String epoch) {
         EpochFeeRateEvent epochFeeRateEvent = epochFeeRateEventRepository.findFirstByEpochAndTokenIdOrderByCreateTimeDesc(epoch, tokenId);
+        if (epochFeeRateEvent != null){
+            return epochFeeRateEvent.getFeeRate();
+        } else {
+            return "";
+        }
+    }
+
+    public String getNextFeeRate(String tokenId, String epoch) {
+        String nextEpoch = String.valueOf(Integer.parseInt(epoch) + 1);
+        EpochFeeRateEvent epochFeeRateEvent = epochFeeRateEventRepository.findFirstByEpochAndTokenIdOrderByCreateTimeDesc(nextEpoch, tokenId);
         if (epochFeeRateEvent != null){
             return epochFeeRateEvent.getFeeRate();
         } else {

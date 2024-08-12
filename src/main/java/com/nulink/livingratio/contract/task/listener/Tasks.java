@@ -19,20 +19,20 @@ public class Tasks {
     private static final Object blockListenerTaskKey = new Object();
     private static boolean lockBlockListenerTaskFlag = false;
 
-    private static final Object blockListenerDelay50TaskKey = new Object();
-    private static boolean lockBlockListenerDelay50TaskFlag = false;
+    private static final Object blockListenerDelay30TaskKey = new Object();
+    private static boolean lockBlockListenerDelay30TaskFlag = false;
 
-    private static final Object blockListenerDelay100TaskKey = new Object();
-    private static boolean lockBlockListenerDelay100TaskFlag = false;
+    private static final Object blockListenerDelay60TaskKey = new Object();
+    private static boolean lockBlockListenerDelay60TaskFlag = false;
 
     @Autowired
     BlockEventListener blockEventListener;
 
     @Autowired
-    BlockEventListener blockEventDelayListener50;
+    BlockEventListener blockEventDelayListener30;
 
     @Autowired
-    BlockEventListener blockEventDelayListener100;
+    BlockEventListener blockEventDelayListener60;
 
     @Async
     @Scheduled(cron = "0/6 * * * * ?")
@@ -61,56 +61,56 @@ public class Tasks {
 
     @Async
     @Scheduled(cron = "0/6 * * * * ?")
-    public void scanBlockEventDelay50() {
+    public void scanBlockEventDelay30() {
 
-        synchronized (blockListenerDelay50TaskKey) {
-            if (Tasks.lockBlockListenerDelay50TaskFlag) {
-                logger.warn("The Delay50 blockchain event scanning task is currently in progress.");
+        synchronized (blockListenerDelay30TaskKey) {
+            if (Tasks.lockBlockListenerDelay30TaskFlag) {
+                logger.warn("The Delay30 blockchain event scanning task is currently in progress.");
                 return;
             }
-            Tasks.lockBlockListenerDelay50TaskFlag = true;
+            Tasks.lockBlockListenerDelay30TaskFlag = true;
         }
 
         logger.info("Initiate the execution of the Delay50 blockchain event scanning task.");
         try {
 
-            blockEventDelayListener50.start(50, null, null);
+            blockEventDelayListener30.start(30, null, null);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        Tasks.lockBlockListenerDelay50TaskFlag = false;
+        Tasks.lockBlockListenerDelay30TaskFlag = false;
 
-        logger.info("The Delay50 blockchain event scanning task has concluded.");
+        logger.info("The Delay30 blockchain event scanning task has concluded.");
     }
 
     @Async
     @Scheduled(cron = "0/6 * * * * ?")
-    public void scanBlockEventDelay100() {
+    public void scanBlockEventDelay60() {
 
-        synchronized (blockListenerDelay100TaskKey) {
-            if (Tasks.lockBlockListenerDelay100TaskFlag) {
-                logger.warn("The Delay100 blockchain event scanning task is currently in progress.");
+        synchronized (blockListenerDelay60TaskKey) {
+            if (Tasks.lockBlockListenerDelay60TaskFlag) {
+                logger.warn("The Delay60 blockchain event scanning task is currently in progress.");
                 return;
             }
-            Tasks.lockBlockListenerDelay100TaskFlag = true;
+            Tasks.lockBlockListenerDelay60TaskFlag = true;
         }
 
-        logger.info("Initiate the execution of the Delay100 blockchain event scanning task.");
+        logger.info("Initiate the execution of the Delay60 blockchain event scanning task.");
         try {
             Set<String> disableTaskNames = new HashSet<>();
             disableTaskNames.add("NodePoolStakingManager");
             disableTaskNames.add("NodePoolFactory");
-            blockEventDelayListener100.start(100, null, disableTaskNames);
+            blockEventDelayListener60.start(60, null, disableTaskNames);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        Tasks.lockBlockListenerDelay100TaskFlag = false;
+        Tasks.lockBlockListenerDelay60TaskFlag = false;
 
-        logger.info("The Delay100 blockchain event scanning task has concluded.");
+        logger.info("The Delay60 blockchain event scanning task has concluded.");
     }
 
 }

@@ -6,13 +6,12 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nulink.livingratio.constant.NodePoolEventEnum;
+import com.nulink.livingratio.contract.task.listener.Tasks;
 import com.nulink.livingratio.entity.*;
 import com.nulink.livingratio.entity.event.Bond;
 import com.nulink.livingratio.entity.event.CreateNodePoolEvent;
-import com.nulink.livingratio.entity.event.EpochFeeRateEvent;
-import com.nulink.livingratio.entity.event.NodePoolEvents;
 import com.nulink.livingratio.repository.BondRepository;
+import com.nulink.livingratio.repository.CreateNodePoolEventRepository;
 import com.nulink.livingratio.repository.GridStakeRewardRepository;
 import com.nulink.livingratio.repository.NodePoolEventsRepository;
 import com.nulink.livingratio.utils.HttpClientUtil;
@@ -43,7 +42,6 @@ import javax.annotation.Resource;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -72,8 +70,7 @@ public class GridStakeRewardService {
     private final Web3jUtils web3jUtils;
     private final IncludeUrsulaService includeUrsulaService;
     private final RedisService redisService;
-    private final NodePoolEventsRepository nodePoolEventsRepository;
-    private final CreateNodePoolEventService createNodePoolEventService;
+    private final CreateNodePoolEventRepository createNodePoolEventRepository;
     private final EpochFeeRateEventService epochFeeRateEventService;
 
 
@@ -84,6 +81,9 @@ public class GridStakeRewardService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
+    private static final Object livingRatioTaskKey = new Object();
+    private static boolean livingRatioTaskFlag = false;
+
     @Resource
     private RedissonClient redissonClient;
 
@@ -91,17 +91,15 @@ public class GridStakeRewardService {
                                   BondRepository bondRepository,
                                   Web3jUtils web3jUtils,
                                   IncludeUrsulaService includeUrsulaService,
-                                  RedisService redisService,
-                                  NodePoolEventsRepository nodePoolEventsRepository,
-                                  CreateNodePoolEventService createNodePoolEventService, EpochFeeRateEventService epochFeeRateEventService,
+                                  RedisService redisService, CreateNodePoolEventRepository createNodePoolEventRepository,
+                                  EpochFeeRateEventService epochFeeRateEventService,
                                   RedisTemplate<String, String> redisTemplate) {
         this.stakeRewardRepository = stakeRewardRepository;
         this.bondRepository = bondRepository;
         this.web3jUtils = web3jUtils;
         this.includeUrsulaService = includeUrsulaService;
         this.redisService = redisService;
-        this.nodePoolEventsRepository = nodePoolEventsRepository;
-        this.createNodePoolEventService = createNodePoolEventService;
+        this.createNodePoolEventRepository = createNodePoolEventRepository;
         this.epochFeeRateEventService = epochFeeRateEventService;
         this.redisTemplate = redisTemplate;
     }
@@ -199,6 +197,13 @@ public class GridStakeRewardService {
     //@Scheduled(cron = "0 0 * * * ?")
     @Scheduled(cron = "0 0/5 * * * ? ")
     public void livingRatio() {
+        synchronized (livingRatioTaskKey) {
+            if (GridStakeRewardService.livingRatioTaskFlag) {
+                log.warn("The livingRatio task is already in progress");
+                return;
+            }
+            GridStakeRewardService.livingRatioTaskFlag = true;
+        }
         RLock fairLock = redissonClient.getFairLock("livingRatioTaskKey");
 
         DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
@@ -210,14 +215,14 @@ public class GridStakeRewardService {
 
                 String epoch = web3jUtils.getCurrentEpoch();
                 if (Integer.parseInt(epoch) < 1){
-                    fairLock.unlock();
+                    platformTransactionManager.commit(status);
                     return;
                 }
                 log.info("living ratio task start ...........................");
                 List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(epoch);
 
 
-                List<String> stakingAddress = stakeRewards.stream().map(GridStakeReward::getStakingProvider).collect(Collectors.toList());
+                List<String> stakingAddress = stakeRewards.stream().map(GridStakeReward::getGridAddress).collect(Collectors.toList());
                 List<String> nodeAddresses = findNodeAddress(stakingAddress);
 
                 CheckNodeExecutor checkNodeExecutor = new CheckNodeExecutor();
@@ -237,8 +242,7 @@ public class GridStakeRewardService {
 
                 for (GridStakeReward stakeReward : stakeRewards) {
                     stakeReward.setPingCount(stakeReward.getPingCount() + 1);
-                    String stakingProvider = stakeReward.getTokenId();
-
+                    String stakingProvider = stakeReward.getGridAddress();
                     if (isUnBond(stakingProvider)){
                         stakeReward.setUnStake(stakeReward.getUnStake() + 1);
                     } else {
@@ -252,7 +256,7 @@ public class GridStakeRewardService {
                                     stakeReward.setIpAddress(ipAddress);
                                 }
                             }
-                            Boolean b = nodeCheckMap.get(stakeReward.getTokenId());
+                            Boolean b = nodeCheckMap.get(stakeReward.getGridAddress());
                             if (b != null && b){
                                 stakeReward.setConnectable(stakeReward.getConnectable() + 1);
                                 connectable ++;
@@ -265,11 +269,11 @@ public class GridStakeRewardService {
                     }
                     stakeReward.setLivingRatio(new BigDecimal(stakeReward.getConnectable()).divide(new BigDecimal(stakeReward.getPingCount()), 4, RoundingMode.HALF_UP).toString());
                 }
+                countStakeReward(stakeRewards, epoch);
                 stakeRewardRepository.saveAll(stakeRewards);
                 includeUrsulaService.setIncludeUrsula(connectable);
                 StakeRewardOverview stakeRewardOverview = stakingRewardOverviewService.getStakeRewardOverview(stakeRewards, epoch);
                 stakingRewardOverviewService.saveByEpoch(stakeRewardOverview);
-                platformTransactionManager.commit(status);
                 log.info("living ratio task finish ...........................");
             }
         }catch (Exception e){
@@ -277,7 +281,11 @@ public class GridStakeRewardService {
             platformTransactionManager.rollback(status);
             throw new RuntimeException(e);
         }finally {
-            fairLock.unlock();
+            platformTransactionManager.commit(status);
+            if (fairLock.isLocked()){
+                fairLock.unlock();
+            }
+            GridStakeRewardService.livingRatioTaskFlag = false;
         }
     }
 
@@ -365,8 +373,8 @@ public class GridStakeRewardService {
     }
 
     private String getIpAddress(String url){
-        if (null == url){
-            return null;
+        if (StringUtils.isEmpty(url)){
+            return "";
         }
         return url.substring(url.lastIndexOf("/") + 1, url.lastIndexOf(":"));
     }
@@ -434,11 +442,11 @@ public class GridStakeRewardService {
         }
     }
 
-    public boolean checkNode(String stakeAddress) throws IOException {
+    public boolean checkNode(String gridAddress) throws IOException {
         try{
             OkHttpClient client = HttpClientUtil.getUnsafeOkHttpClient();
             HttpUrl.Builder urlBuilder = HttpUrl.parse(porterServiceUrl + CHECK_URSULA_API).newBuilder();
-            urlBuilder.addQueryParameter("staker_address", stakeAddress);
+            urlBuilder.addQueryParameter("staker_address", gridAddress);
             String url = urlBuilder.build().toString();
             Request request = new Request.Builder().url(url).build();
             Response response = client.newCall(request).execute();
@@ -452,69 +460,13 @@ public class GridStakeRewardService {
                 return false;
             }
         } catch (Exception e){
-            log.error("check ursula failed. -" + stakeAddress + "-" + e.getMessage());
+            log.error("check ursula failed. -" + gridAddress + "-" + e.getMessage());
             return false;
         }
     }
 
-    public GridStakeReward nodeInfo(String stakingProvider){
-        NodePoolEvents stake = nodePoolEventsRepository.findFirstByUserAndEventOrderByCreateTimeDesc(stakingProvider, NodePoolEventEnum.STAKING.getName());
-        if (null == stake){
-            return null;
-        }
-        GridStakeReward stakeReward = new GridStakeReward();
-        stakeReward.setTokenId(stake.getUser());
-        Bond bond = bondRepository.findLastOneBondByStakingProvider(stakingProvider);
-        if (null != bond){
-            stakeReward.setOperator(bond.getOperator());
-            List<String> nodeAddress = null;
-            try {
-                nodeAddress = findNodeAddress(Collections.singletonList(stake.getUser()));
-            } catch (IOException e) {
-                log.error("fetch node url in porter failed:" + e.getMessage());
-                throw new RuntimeException(e);
-            }
-            String nodeUrl = nodeAddress.get(0);
-            if (StringUtils.isNotEmpty(nodeUrl)){
-                String ipAddress = getIpAddress(nodeUrl);
-                stakeReward.setIpAddress(ipAddress);
-                try {
-                    stakeReward.setOnline(checkNode(stakingProvider));
-                } catch (IOException e) {
-                    log.error("check node status failed:" + e.getMessage());
-                    throw new RuntimeException(e);
-                }
-            } else {
-                /*StakeReward s = stakeRewardRepository.findFirstByStakingProviderAndIpAddressIsNotNullOrderByCreateTimeDesc(stakingProvider);
-                if (null != s){
-                    stakeReward.setIpAddress(s.getIpAddress());
-                }*/
-                stakeReward.setOnline(false);
-            }
-        } else {
-            stakeReward.setOnline(false);
-        }
-        return stakeReward;
-    }
-
-    public GridStakeReward findByEpochAndStakingProvider(String stakingProvider, String epoch){
-        String currentEpoch = web3jUtils.getCurrentEpoch();
-        if (currentEpoch.equals(epoch)){
-            List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(epoch);
-            countStakeReward(stakeRewards, epoch);
-            for (GridStakeReward stakeReward : stakeRewards) {
-                if (stakeReward.getStakingProvider().equals(stakingProvider)){
-                    return stakeReward;
-                }
-            }
-        } else {
-            return stakeRewardRepository.findByEpochAndStakingProvider(epoch, stakingProvider);
-        }
-        return null;
-    }
-
     public GridStakeReward findByEpochAndTokenId(String tokenId, String epoch){
-        String cacheKey = "GridStakeReward" + ":" + epoch + ":" +tokenId;
+        String cacheKey = "GridStakeRewardEpochAndTokenId" + ":" + epoch + ":" +tokenId;
         try {
             Object value = redisService.get(cacheKey);
             if (value != null) {
@@ -525,24 +477,86 @@ public class GridStakeRewardService {
             log.error("----------- GridStakeReward findByEpochAndTokenId redis read error: {}", e.getMessage());
         }
         String currentEpoch = web3jUtils.getCurrentEpoch();
-        GridStakeReward gridStakeReward = null;
+        GridStakeReward stakeReward = new GridStakeReward();
         if (currentEpoch.equals(epoch)){
             List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(epoch);
             countStakeReward(stakeRewards, epoch);
-            for (GridStakeReward stakeReward : stakeRewards) {
-                if (stakeReward.getTokenId().equals(tokenId)){
-                    gridStakeReward = stakeReward;
+            Map<String, GridStakeReward> map = new HashMap<>();
+            stakeRewards.forEach(s -> map.put(s.getTokenId(), s));
+            if (map.containsKey(tokenId)){
+                stakeReward = map.get(tokenId);
+            } else {
+                // load from create node pool event
+                CreateNodePoolEvent nodePoolEvent = createNodePoolEventRepository.findByTokenId(tokenId);
+                stakeReward.setStakingProvider(nodePoolEvent.getOwnerAddress());
+                stakeReward.setGridAddress(nodePoolEvent.getNodePoolAddress());
+                stakeReward.setTokenId(tokenId);
+            }
+            stakeReward.setCurrentFeeRatio(epochFeeRateEventService.getFeeRate(tokenId, epoch));
+            stakeReward.setNextFeeRatio(epochFeeRateEventService.getFeeRate(tokenId, String.valueOf(Integer.parseInt(epoch) + 1)));
+            Bond bond = bondRepository.findFirstByStakingProviderOrderByCreateTimeDesc(stakeReward.getGridAddress());
+            if (bond != null && !bond.getOperator().equals("0x0000000000000000000000000000000000000000")){
+                stakeReward.setOperator(bond.getOperator());
+                try {
+                    List<String> nodeAddress = findNodeAddress(Collections.singletonList(stakeReward.getGridAddress()));
+                    String url = nodeAddress.get(0);
+                    stakeReward.setIpAddress(getIpAddress(url));
+                    stakeReward.setOnline(checkNode(url));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         } else {
-            gridStakeReward = stakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
+            stakeReward = stakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
+        }
+        if (stakeReward != null){
+            try {
+                String pvoStr = JSON.toJSONString(stakeReward, SerializerFeature.WriteNullStringAsEmpty);
+                redisService.set(cacheKey, pvoStr, 20, TimeUnit.SECONDS);
+            }catch (Exception e){
+                log.error("GridStakeReward findByEpochAndTokenId  redis write error：{}", e.getMessage());
+            }
+        }
+        return stakeReward;
+    }
+
+    public GridStakeReward findGridInfoByTokenId(String tokenId){
+        String cacheKey = "GridStakeRewardFindGridInfoByTokenId" + ":" + tokenId;
+        try {
+            Object value = redisService.get(cacheKey);
+            if (value != null) {
+                String v = value.toString();
+                return JSONObject.parseObject(v, GridStakeReward.class);
+            }
+        } catch (Exception e) {
+            log.error("----------- GridStakeReward findGridInfoByTokenId redis read error: {}", e.getMessage());
+        }
+        CreateNodePoolEvent nodePoolEvent = createNodePoolEventRepository.findByTokenId(tokenId);
+        GridStakeReward gridStakeReward = null;
+        if (nodePoolEvent != null){
+            String poolAddress = nodePoolEvent.getNodePoolAddress();
+            gridStakeReward = new GridStakeReward(poolAddress, tokenId, nodePoolEvent.getOwnerAddress(), null);
+            Bond bond = bondRepository.findFirstByStakingProviderOrderByCreateTimeDesc(poolAddress);
+            if (bond != null && !bond.getOperator().equals("0x0000000000000000000000000000000000000000")){
+                gridStakeReward.setOperator(bond.getOperator());
+                try {
+                    List<String> nodeAddress = findNodeAddress(Collections.singletonList(poolAddress));
+                    String url = nodeAddress.get(0);
+                    gridStakeReward.setIpAddress(getIpAddress(url));
+                    if (StringUtils.isNotBlank(url)){
+                        gridStakeReward.setOnline(checkNode(poolAddress));
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
         if (gridStakeReward != null){
             try {
                 String pvoStr = JSON.toJSONString(gridStakeReward, SerializerFeature.WriteNullStringAsEmpty);
                 redisService.set(cacheKey, pvoStr, 20, TimeUnit.SECONDS);
             }catch (Exception e){
-                log.error("GridStakeReward findByEpochAndTokenId  redis write error：{}", e.getMessage());
+                log.error("GridStakeReward findGridInfoByTokenId  redis write error：{}", e.getMessage());
             }
         }
         return gridStakeReward;
@@ -635,7 +649,6 @@ public class GridStakeRewardService {
         } catch (Exception e) {
             log.error("----------- StakeReward find page redis write error: {}", e.getMessage());
         }
-        long redisWriteEndTime = System.currentTimeMillis();
         redisService.del(stakeRewardQueryKey);
         long endTime = System.currentTimeMillis();
         log.info("----------- Total execution time: {}ms", endTime - startTime);
@@ -669,7 +682,7 @@ public class GridStakeRewardService {
         } else if ("nextFeeRatio".equalsIgnoreCase(orderBy)) {
             sort = Sort.by("nextFeeRatio");
         } else {
-            sort = Sort.by("createTime");
+            sort = Sort.by("tokenId");
         }
         return "DESC".equalsIgnoreCase(sorted) ? sort.descending() : sort.ascending();
     }
@@ -739,11 +752,9 @@ public class GridStakeRewardService {
         }
         Map<String, String> result = new HashMap<>();
         try {
-            int nextEpoch = Integer.parseInt(epoch) + 1;
-
             List<GridStakeReward> all = stakeRewardRepository.findAllByEpoch(epoch);
             Set<String> tokenIds = all.stream().map(GridStakeReward::getTokenId).collect(Collectors.toSet());
-            List<CreateNodePoolEvent> events = createNodePoolEventService.findAll();
+            List<CreateNodePoolEvent> events = createNodePoolEventRepository.findAll();
             for (CreateNodePoolEvent event : events) {
                 if (!tokenIds.contains(event.getTokenId())) {
                     GridStakeReward gridStakeReward = new GridStakeReward();
@@ -789,7 +800,7 @@ public class GridStakeRewardService {
     private List<GridStakeReward> pageHelper(int pageSize, int pageNum, String orderBy, String sorted, List<GridStakeReward> stakeRewards) {
         Comparator<GridStakeReward> comparator = null;
         if ("livingRatio".equalsIgnoreCase(orderBy)) {
-            comparator = Comparator.comparing(sr -> new BigDecimal(sr.getLivingRatio()));
+            comparator = Comparator.comparing(sr -> new BigDecimal(StringUtils.isBlank(sr.getLivingRatio())?"0":sr.getLivingRatio()));
         } else if ("stakingAmount".equalsIgnoreCase(orderBy)) {
             comparator = Comparator.comparing(sr -> new BigDecimal(sr.getStakingAmount()));
         } else if ("stakingReward".equalsIgnoreCase(orderBy)) {
@@ -804,6 +815,8 @@ public class GridStakeRewardService {
             comparator = Comparator.comparing(sr -> new BigDecimal(sr.getCurrentFeeRatio()));
         } else if ("nextFeeRatio".equalsIgnoreCase(orderBy)){
             comparator = Comparator.comparing(sr -> new BigDecimal(sr.getNextFeeRatio()));
+        } else {
+            comparator = Comparator.comparing(sr -> new BigDecimal(sr.getTokenId()));
         }
 
         if (comparator != null) {
@@ -891,5 +904,9 @@ public class GridStakeRewardService {
 
     public int getTotalGridAmount(){
         return stakeRewardRepository.countTotalNode();
+    }
+
+    public List<GridStakeReward> findAllByEpochAndStakingProvider(String epoch, String stakingProvider){
+        return stakeRewardRepository.findAllByEpochAndStakingProviderOrderByTokenIdAsc(epoch, stakingProvider);
     }
 }

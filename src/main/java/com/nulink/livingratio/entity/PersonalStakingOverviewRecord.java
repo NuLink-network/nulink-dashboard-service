@@ -5,16 +5,17 @@ import lombok.Setter;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.Index;
 import javax.persistence.Table;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "personal_staking_overview_record", indexes = {
-        @javax.persistence.Index(name = "epoch_index", columnList = "epoch"),
-        @javax.persistence.Index(name = "token_id_index", columnList = "token_id"),
-        @javax.persistence.Index(name = "user_address_index", columnList = "user_address"),
-        @javax.persistence.Index(name = "tx_hash_index", columnList = "tx_hash", unique = true)
+        @Index(name = "epoch_index", columnList = "epoch"),
+        @Index(name = "token_id_index", columnList = "token_id"),
+        @Index(name = "user_address_index", columnList = "user_address"),
+        @Index(name = "tx_hash_index", columnList = "tx_hash", unique = true)
 })
 public class PersonalStakingOverviewRecord extends BaseEntity{
 

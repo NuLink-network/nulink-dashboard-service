@@ -19,4 +19,7 @@ public interface CreateNodePoolEventRepository extends PagingAndSortingRepositor
 
     @Query(value = "select count(1) from card_slot cs where start_timestamp <= now() and end_timestamp > now()", nativeQuery = true)
     Integer stakeGridsForAuction();
+
+    List<CreateNodePoolEvent> findAllByOwnerAddress(String ownerAddress);
+
 }

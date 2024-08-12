@@ -33,6 +33,7 @@ import org.web3j.protocol.core.methods.response.*;
 import org.web3j.protocol.exceptions.TransactionException;
 import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.TransactionManager;
+import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.tx.response.TransactionReceiptProcessor;
 import org.web3j.utils.Numeric;
@@ -118,8 +119,8 @@ public class Web3jUtils {
         credentials = Credentials.create(getPrivateKey(keystoreContent, password));
         String rpcUrl = rpcConfig.getRpcUrl();
         if (StringUtils.isEmpty(rpcUrl)){
-            rpcUrl = blockpiRpc;
-            rpcConfig.setRpcUrl(blockpiRpc);
+            rpcUrl = ankrRpc;
+            rpcConfig.setRpcUrl(ankrRpc);
         }
         logger.info("Init Web3j instance ...");
         logger.info("Construct a new Web3j instance by " + rpcUrl);
@@ -317,21 +318,21 @@ public class Web3jUtils {
                 BigInteger nonce = ethGetTransactionCount.getTransactionCount();
                 log.info("sendTransaction nonce: {}", nonce);
 
-                Transaction transaction = Transaction.createFunctionCallTransaction(
+                /*Transaction transaction = Transaction.createFunctionCallTransaction(
                         fromAddress,
                         nonce,
                         BigInteger.ZERO,
                         BigInteger.ZERO,
                         contractAddress,
                         encodedFunction
-                );
+                );*/
 
-                BigInteger transactionGasLimit = getTransactionGasLimit(transaction);
+                //BigInteger transactionGasLimit = getTransactionGasLimit(transaction);
 
                 BigInteger ethGasPrice = getGasPrice().multiply(new BigInteger("15")).divide(new BigInteger("10"));
 
-                //RawTransaction rawTransaction = RawTransaction.createTransaction( nonce, ethGasPrice, DefaultGasProvider.GAS_LIMIT, contractAddress, encodedFunction);
-                RawTransaction rawTransaction = RawTransaction.createTransaction( nonce, ethGasPrice, transactionGasLimit.multiply(new BigInteger("2")), contractAddress, encodedFunction);
+                RawTransaction rawTransaction = RawTransaction.createTransaction( nonce, ethGasPrice, DefaultGasProvider.GAS_LIMIT, contractAddress, encodedFunction);
+                //RawTransaction rawTransaction = RawTransaction.createTransaction( nonce, ethGasPrice, transactionGasLimit.multiply(new BigInteger("2")), contractAddress, encodedFunction);
 
                 byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials);
                 String hexValue = Numeric.toHexString(signedMessage);
@@ -696,11 +697,11 @@ public class Web3jUtils {
         List<Type> inputParameters = new ArrayList<>();
         inputParameters.add(new Uint256(Long.parseLong(tokenId)));
         inputParameters.add(new Uint16(Long.parseLong(epoch)));
-        inputParameters.add(new Uint256(Long.parseLong(rewardAmount)));
-        inputParameters.add(new Uint256(Long.parseLong(epochActiveAmount)));
+        inputParameters.add(new Uint256(new BigInteger(rewardAmount)));
+        inputParameters.add(new Uint256(new BigInteger(epochActiveAmount)));
         List<TypeReference<?>> outputParameters = new ArrayList<>();
-        Function function = new Function("setNodePoolEpochReward", inputParameters, outputParameters);
-        ContractsConfig.ContractInfo eventReferralRewardCI = contractsConfig.getContractInfo("NodePoolVault");
+        Function function = new Function("setEpochReward", inputParameters, outputParameters);
+        ContractsConfig.ContractInfo eventReferralRewardCI = contractsConfig.getContractInfo("NodePoolRouter");
         return sendTransaction(function, eventReferralRewardCI.getAddress());
     }
 

@@ -130,6 +130,7 @@ public class StakeRewardOverviewService {
             if (!stakeRewards.isEmpty()){
                 stakeRewardOverview = getStakeRewardOverview(stakeRewards, epoch);
             } else {
+                stakeRewardOverview = new StakeRewardOverview();
                 List<StakeRewardOverview> epochBefore = stakeRewardOverviewRepository.findAllByEpochBefore(Integer.parseInt(epoch));
                 List<String> reward = epochBefore.stream().map(StakeRewardOverview::getCurrentEpochReward).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
                 String sum = sum(reward);
@@ -140,7 +141,7 @@ public class StakeRewardOverviewService {
         }
         try {
             String pvoStr = JSON.toJSONString(stakeRewardOverview, SerializerFeature.WriteNullStringAsEmpty);
-            redisService.set(stakeRewardOverviewCurrentEpoch, pvoStr, 10, TimeUnit.MINUTES);
+            redisService.set(stakeRewardOverviewCurrentEpoch, pvoStr, 20, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.error("StakeRewardOverview findCurrentEpoch redis write error：{}", e.getMessage());
         }

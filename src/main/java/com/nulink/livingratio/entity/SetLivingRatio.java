@@ -17,7 +17,7 @@ public class SetLivingRatio extends BaseEntity{
     @Column(name = "tx_hash")
     private String txHash;
 
-    @Column(name = "epoch", unique = true)
+    @Column(name = "epoch")
     private String epoch;
 
     @Column(name = "token_id")

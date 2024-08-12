@@ -59,6 +59,9 @@ contracts:
     - name: 'NuLinkStakingSetting'
       address: '0xc5b9384d4b3893f4A47E5a1fe7936Dacd5EBE2Dc'
       enabled: true
+    - name: 'NodePoolRouter'
+      address: '0xB26a4D56E0dB2103b118b724BFf5003a4DBA82CF'
+      enabled: true
 
 web3j:
   client-address:

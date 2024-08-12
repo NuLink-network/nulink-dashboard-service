@@ -2,10 +2,7 @@ package com.nulink.livingratio.entity;
 
 import lombok.Data;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Index;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 @Data
 @Entity
@@ -39,5 +36,11 @@ public class GridStakingDetail extends BaseEntity{
 
     @Column(name = "is_valid", columnDefinition = "boolean default false")
     private boolean isValid;
+
+    @Transient
+    private String fee;
+
+    @Transient
+    private Integer index;
 
 }

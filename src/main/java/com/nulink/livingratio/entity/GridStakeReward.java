@@ -83,4 +83,13 @@ public class GridStakeReward extends BaseEntity implements Serializable {
     @Column(name = "next_fee_ratio")
     private String nextFeeRatio;
 
+    public GridStakeReward() {
+    }
+
+    public GridStakeReward(String gridAddress, String tokenId, String stakingProvider, String epoch) {
+        this.gridAddress = gridAddress;
+        this.tokenId = tokenId;
+        this.stakingProvider = stakingProvider;
+        this.epoch = epoch;
+    }
 }

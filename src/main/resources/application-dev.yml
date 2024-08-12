@@ -59,7 +59,10 @@ contracts:
       name: 'NuLinkStakingSetting'
       address: '0xc5b9384d4b3893f4A47E5a1fe7936Dacd5EBE2Dc'
       enabled: true
-
+    -
+      name: 'NodePoolRouter'
+      address: '0xB26a4D56E0dB2103b118b724BFf5003a4DBA82CF'
+      enabled: true
 web3j:
   client-address:
     official: https://data-seed-prebsc-1-s1.bnbchain.org:8545
@@ -74,6 +77,6 @@ knife4j:
     language: en-US
 
 NULink:
-  porter-service-url: http://8.219.11.39:9165
+  porter-service-url: http://8.219.11.39:9155
   password: x0i60c2N4he6
   chainId: 97

@@ -15,6 +15,7 @@ import com.nulink.livingratio.repository.PersonalStakingOverviewRepository;
 import com.nulink.livingratio.repository.ValidPersonalStakingAmountRepository;
 import com.nulink.livingratio.utils.RedisService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -72,14 +73,14 @@ public class PersonalStakingOverviewService {
         }
     }
 
-    @Transactional
+    @Transactional()
     public void handleStakingEvent(NodePoolEvents nodePoolEvents) {
         String user = nodePoolEvents.getUser();
         String tokenId = nodePoolEvents.getTokenId();
         PersonalStakingOverviewRecord newPersonalStakingOverviewRecord =
                 new PersonalStakingOverviewRecord(user, nodePoolEvents.getEpoch(),
-                        nodePoolEvents.getTxHash(),
                         tokenId,
+                        nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.STAKING.getName());
 
         PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(user);
@@ -122,8 +123,9 @@ public class PersonalStakingOverviewService {
         PersonalStakingOverviewRecord newPersonalStakingOverviewRecord =
                 new PersonalStakingOverviewRecord(user,
                         nodePoolEvents.getEpoch(),
+                        tokenId,
                         nodePoolEvents.getTxHash(),
-                        tokenId, NodePoolEventEnum.UN_STAKING.getName());
+                        NodePoolEventEnum.UN_STAKING.getName());
         PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(nodePoolEvents.getUser());
         if (stakingOverview != null){
             String lockAmount = nodePoolEvents.getLockAmount();
@@ -153,8 +155,8 @@ public class PersonalStakingOverviewService {
         PersonalStakingOverviewRecord newPersonalStakingOverviewRecord =
                 new PersonalStakingOverviewRecord(nodePoolEvents.getUser(),
                         nodePoolEvents.getEpoch(),
-                        nodePoolEvents.getTxHash(),
                         nodePoolEvents.getTokenId(),
+                        nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.CLAIM.getName());
         PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(nodePoolEvents.getUser());
         if (stakingOverview != null){
@@ -185,8 +187,8 @@ public class PersonalStakingOverviewService {
         PersonalStakingOverviewRecord newPersonalStakingOverviewRecord =
                 new PersonalStakingOverviewRecord(nodePoolEvents.getUser(),
                         nodePoolEvents.getEpoch(),
-                        nodePoolEvents.getTxHash(),
                         nodePoolEvents.getTokenId(),
+                        nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.CLAIM_REWARD.getName());
         PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(nodePoolEvents.getUser());
         if (stakingOverview != null){
@@ -230,7 +232,11 @@ public class PersonalStakingOverviewService {
             for (GridStakingDetail gridStakingDetail : stakingDetails){
                 accumulatedReward = accumulatedReward.add(new BigInteger(gridStakingDetail.getStakingReward()));
             }
-            BigInteger calaimableReward = accumulatedReward.subtract(new BigInteger(overviewRecord.getReceivedRewardAmount()));
+            String receivedRewardAmount = overviewRecord.getReceivedRewardAmount();
+            if (StringUtils.isBlank(receivedRewardAmount)){
+                receivedRewardAmount = "0";
+            }
+            BigInteger calaimableReward = accumulatedReward.subtract(new BigInteger(receivedRewardAmount));
             userStakingOverviewDTO.setAccumulatedReward(accumulatedReward.toString());
             userStakingOverviewDTO.setClaimableReward(calaimableReward.toString());
         }

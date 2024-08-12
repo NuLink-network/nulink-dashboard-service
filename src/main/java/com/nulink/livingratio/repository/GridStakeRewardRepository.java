@@ -14,24 +14,22 @@ import java.util.List;
 @Repository
 public interface GridStakeRewardRepository extends PagingAndSortingRepository<GridStakeReward, Long>, JpaSpecificationExecutor {
 
-    GridStakeReward findByEpochAndStakingProvider(String epoch, String stakingProvider);
+    GridStakeReward findByEpochAndTokenId(String epoch, String tokenId);
 
     List<GridStakeReward> findAllByEpoch(String epoch);
 
     Page<GridStakeReward> findAllByEpoch(String epoch, Pageable pageable);
 
-    List<GridStakeReward> findAllByEpochAndLivingRatioNot(String epoch, String stakingReward);
-
-    List<GridStakeReward> findAllByStakingProvider(String StakingProvider);
+    List<GridStakeReward> findAllByTokenId(String tokenId);
 
     List<GridStakeReward> findAllByStakingProviderAndEpochNot(String stakingProvider, String epoch);
 
     @Query(value = "SELECT count(1) FROM grid_stake_reward sr where token_id = :tokenId and SUBSTR(sr.living_ratio, 1, 1) = '1' and epoch != :currentEpoch", nativeQuery = true)
     int countStakingProviderAllOnlineEpoch(@Param("tokenId") String tokenId, @Param("currentEpoch") String currentEpoch);
 
-    GridStakeReward findByEpochAndTokenId(String epoch, String tokenId);
-
-    @Query(value = "select count(distinct grid_stake_reward.token_id) from grid_stake_reward where staking_reward != '0'", nativeQuery = true)
+    @Query(value = "select count(distinct grid_stake_reward.token_id) from grid_stake_reward where living_ratio != '0.0000'", nativeQuery = true)
     int countTotalNode();
+
+    List<GridStakeReward> findAllByEpochAndStakingProviderOrderByTokenIdAsc(String epoch, String stakingProvider);
 
 }

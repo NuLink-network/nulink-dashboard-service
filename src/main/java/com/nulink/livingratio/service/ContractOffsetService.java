@@ -5,6 +5,7 @@ import com.nulink.livingratio.repository.ContractOffsetRepository;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
+import java.math.BigInteger;
 
 @Service
 public class ContractOffsetService {
@@ -22,5 +23,9 @@ public class ContractOffsetService {
     @Transactional
     public void update(ContractOffset contractOffset){
         contractOffsetRepository.save(contractOffset);
+    }
+
+    public BigInteger findMinBlockOffset(){
+        return contractOffsetRepository.findMinBlockOffset();
     }
 }
