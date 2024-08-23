@@ -49,7 +49,7 @@ public class StakeRewardOverviewController {
 
     @ApiOperation(value = "total staking node")
     @GetMapping("totalStakingNode")
-    public BaseResponse<String> totalStakingNode(){
-        return BaseResponse.success(String.valueOf(gridStakeRewardService.getTotalGridAmount()));
+    public BaseResponse<String> totalStakingNode(@RequestParam(value = "epoch") String epoch){
+        return BaseResponse.success(String.valueOf(gridStakeRewardService.getTotalGridAmount(epoch)));
     }
 }

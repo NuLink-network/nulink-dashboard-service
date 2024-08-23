@@ -146,7 +146,11 @@ public class CreateNodePoolEventService {
             String url = nodeAddress.get(index);
             if (!StringUtils.isEmpty(url)){
                 installedGridListDTO.setIpAddress(getIpAddress(url));
-                installedGridListDTO.setOnline(gridStakeRewardService.pingNode(url));
+                try {
+                    installedGridListDTO.setOnline(gridStakeRewardService.checkNode(gridStakeReward.getGridAddress()));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
             index++;
             gridListDTOS.add(installedGridListDTO);
@@ -169,7 +173,7 @@ public class CreateNodePoolEventService {
     }
 
     public Integer stakeGridsForAuction() {
-        return createNodePoolEventRepository.stakeGridsForAuction();
+        return createNodePoolEventRepository.stakeGridsForAuction(System.currentTimeMillis()/1000);
     }
 
     public CreateNodePoolEvent findByTokenId(String tokenId) {

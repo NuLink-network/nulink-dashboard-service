@@ -902,8 +902,41 @@ public class GridStakeRewardService {
         }
     }
 
-    public int getTotalGridAmount(){
-        return stakeRewardRepository.countTotalNode();
+    public int getTotalGridAmount(String epoch){
+        String totalGridAmountKey = "TotalGridAmount:" + epoch;
+        try {
+            Object value = redisService.get(totalGridAmountKey);
+            if (null != value) {
+
+                return (int) value;
+            }
+        }catch (Exception e){
+            log.error("TotalGridAmount redis read error：{}", e.getMessage());
+        }
+        String currentEpoch = web3jUtils.getCurrentEpoch();
+        StakeRewardOverview rewardOverview = stakingRewardOverviewService.findByEpoch(epoch);
+        Integer count = 0;
+        if (!epoch.equals(currentEpoch)){
+            if (rewardOverview != null){
+                count = Integer.parseInt(rewardOverview.getTotalStakingNodes());
+            }
+        } else {
+            List<GridStakeReward> stakeRewards = findAllByEpoch(epoch);
+            Set<String> set = stakeRewards.stream().map(GridStakeReward::getGridAddress).collect(Collectors.toSet());
+            List<CreateNodePoolEvent> events = createNodePoolEventRepository.findAll();
+            events.forEach(event -> {
+                if (!set.contains(event.getNodePoolAddress())){
+                    set.add(event.getNodePoolAddress());
+                }
+            });
+            count = set.size();
+        }
+        try {
+            redisService.set(totalGridAmountKey, String.valueOf(count), 5, TimeUnit.MINUTES);
+        }catch (Exception e){
+            log.error("TotalGridAmount redis write error：{}", e.getMessage());
+        }
+        return count;
     }
 
     public List<GridStakeReward> findAllByEpochAndStakingProvider(String epoch, String stakingProvider){
