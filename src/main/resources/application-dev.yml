@@ -11,15 +11,15 @@ spring:
     host: localhost
     database: 2
     connect-timeout: 5000
-    password: Nulink@2023Redis
+    #password: Nulink@2023Redis
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:mysql://127.0.0.1:5306/nulink_dashboard?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://127.0.0.1:3306/nulink_dashboard?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     #url: jdbc:mysql://8.219.11.39:5306/nulink_dashboard?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: root
-    #password: 123456
-    password: NuLink@2023
+    password: 123456
+    #password: NuLink@2023
     hikari:
       minimum-idle: 5
       idle-timeout: 600000
@@ -77,6 +77,6 @@ knife4j:
     language: en-US
 
 NULink:
-  porter-service-url: http://8.219.11.39:9155
+  porter-service-url: http://47.237.117.37:21106
   password: x0i60c2N4he6
   chainId: 97

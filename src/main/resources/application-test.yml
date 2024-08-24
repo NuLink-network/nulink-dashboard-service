@@ -4,7 +4,7 @@ scheduling:
   enabled: true
 
 server:
-  port: 8091
+  port: 21106
 spring:
   redis:
     port: 6379
@@ -15,7 +15,7 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:mysql://rm-gs508vjjdk9khv8ws.mysql.singapore.rds.aliyuncs.com/horus_testnet?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://rm-gs508vjjdk9khv8ws.mysql.singapore.rds.aliyuncs.com/nulink_dashboard?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: horus_testnet
     password: C#If4d+if32l2-F2lf52
     hikari:
@@ -46,16 +46,16 @@ contracts:
   enabled: true
   contractList:
     - name: 'NodePoolFactory' # CreateNodePool
-      address: '0xFc832266A4485aF55447fD519827130C5C3B3564'
+      address: '0x123B94adc44b10151936ae4c55188EcB80b64a4E'
       enabled: true
     - name: 'NodePoolStakingManager' # OperatorBonded
-      address: '0x7422a2938A29E3E2e82DD0Ab118061797e75Deb9'
+      address: '0xF944D0665E07FA0a3596c556EF2ef118c3cc2fF7'
       enabled: true
     - name: 'NuLinkStakingSetting'
-      address: '0xc5b9384d4b3893f4A47E5a1fe7936Dacd5EBE2Dc'
+      address: '0x08312b81967f8404DaE28b9f3cecc6d513fb1Ebc'
       enabled: true
     - name: 'NodePoolRouter'
-      address: '0xB26a4D56E0dB2103b118b724BFf5003a4DBA82CF'
+      address: '0xcd23Bf9d407C736ADDaA9391645e19719cbC9bCb'
       enabled: true
 
 web3j:
@@ -72,6 +72,6 @@ knife4j:
     language: en-US
 
 NULink:
-  porter-service-url: https://porter-api.testnet.nulink.org
+  porter-service-url: http://47.237.117.37:21106
   password: x0i60c2N4he6
   chainId: 97

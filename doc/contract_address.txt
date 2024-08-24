@@ -1,0 +1,13 @@
+# bsc testV13 8/19  v1
+[INFO] AddressController deployed to: 0x479d69579A93A43921b6A45Fcb7BbC6077F71C38
+[INFO] NLKTest deployed to: 0xc65643C56a9c46f903849b204316b5A795712CD7
+[INFO] NodePoolNFT deployed to: 0xD5DbEf22A0fA5E075AfBaEf56a5b970E2cFf7219
+[INFO] NuLinkStakingSetting deployed to: 0x08312b81967f8404DaE28b9f3cecc6d513fb1Ebc
+[INFO] NodePoolFactory deployed to: 0x123B94adc44b10151936ae4c55188EcB80b64a4E
+[INFO] NodePoolRouter deployed to: 0xcd23Bf9d407C736ADDaA9391645e19719cbC9bCb
+[INFO] NodePoolVault deployed to: 0xEB9551A7489f47916Ace6A23169b4FE07ba3298a
+[InFO] AuctionNodePool deployed to:: 0x29D7bCA1B68c78d5753e6E416210Fbc34deb1837
+[INFO] NodePoolStakingManager deployed to: 0xF944D0665E07FA0a3596c556EF2ef118c3cc2fF7
+[INFO] PolicyManager deployed to: 0x60c8135d4C10505b3511e0Ad40d05Ee9CeF5592b
+[INFO] Vault deployed to: 0xa2E1DeD2e5507F1D4649E552bfa6F5caA5B34D1e
+[INFO] ConfigChain deployed to: 0xBd97C245DebFb7faf50f95994E6B10c268952889
