@@ -89,15 +89,18 @@ public class PersonalStakingOverviewService {
             newPersonalStakingOverviewRecord.setTotalStakingAmount(nodePoolEvents.getAmount());
             newPersonalStakingOverviewRecord.setPendingStakingAmount(nodePoolEvents.getAmount());
             newPersonalStakingOverviewRecord.setTotalStakingGrid(1);
+            newPersonalStakingOverviewRecord.setClaimablePrincipleAmount("0");
+            newPersonalStakingOverviewRecord.setPendingPrincipleAmount("0");
+            newPersonalStakingOverviewRecord.setReceivedRewardAmount("0");
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         } else {
             List<ValidPersonalStakingAmount> validPersonalStakingAmounts = validPersonalStakingAmountRepository.findAllByUserAddress(user);
             Set<String> tokenIds = validPersonalStakingAmounts.stream().map(ValidPersonalStakingAmount::getTokenId).collect(Collectors.toSet());
             boolean containsTokenId = tokenIds.contains(tokenId);
+
             newPersonalStakingOverviewRecord.setTotalStakingAmount(new BigInteger(stakingOverview.getTotalStakingAmount())
                     .add(new BigInteger(nodePoolEvents.getAmount())).toString());
-            newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(stakingOverview.getPendingStakingAmount())
-                    .add(new BigInteger(nodePoolEvents.getAmount())).toString());
+
             if (!containsTokenId){
                 newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid() + 1);
             }
@@ -107,10 +110,14 @@ public class PersonalStakingOverviewService {
 
             if (nodePoolEvents.getEpoch().equals(stakingOverview.getEpoch())){
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(stakingOverview.getClaimablePrincipleAmount());
+                newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(stakingOverview.getPendingStakingAmount())
+                        .add(new BigInteger(nodePoolEvents.getAmount())).toString());
             } else {
+                newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(nodePoolEvents.getAmount()).toString());
                 // claimable principle amount
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
-                        new BigInteger(stakingOverview.getClaimablePrincipleAmount()).add(new BigInteger(stakingOverview.getPendingPrincipleAmount())).toString());
+                        new BigInteger(StringUtils.isBlank(stakingOverview.getClaimablePrincipleAmount())? "0" : stakingOverview.getClaimablePrincipleAmount())
+                                .add(new BigInteger(StringUtils.isBlank(stakingOverview.getPendingPrincipleAmount())? "0" : stakingOverview.getPendingPrincipleAmount())).toString());
             }
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         }
