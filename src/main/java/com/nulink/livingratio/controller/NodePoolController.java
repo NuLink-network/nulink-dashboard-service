@@ -3,6 +3,8 @@ package com.nulink.livingratio.controller;
 import com.nulink.livingratio.dto.InstalledGridListDTO;
 import com.nulink.livingratio.entity.GridStakeReward;
 import com.nulink.livingratio.service.CreateNodePoolEventService;
+import com.nulink.livingratio.service.EpochFeeRateEventService;
+import com.nulink.livingratio.utils.Web3jUtils;
 import com.nulink.livingratio.vo.BaseResponse;
 import io.swagger.annotations.Api;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,10 +23,17 @@ import java.util.Map;
 @ConditionalOnProperty(value = "controller.enabled", havingValue = "true")
 public class NodePoolController {
 
+    private final Web3jUtils web3jUtils;
+
     private final CreateNodePoolEventService createNodePoolEventService;
 
-    public NodePoolController(CreateNodePoolEventService createNodePoolEventService) {
+    private final EpochFeeRateEventService epochFeeRateEventService;
+
+    public NodePoolController(Web3jUtils web3jUtils, CreateNodePoolEventService createNodePoolEventService,
+                              EpochFeeRateEventService epochFeeRateEventService) {
+        this.web3jUtils = web3jUtils;
         this.createNodePoolEventService = createNodePoolEventService;
+        this.epochFeeRateEventService = epochFeeRateEventService;
     }
 
     @GetMapping("countStakeGrids")
@@ -41,6 +50,13 @@ public class NodePoolController {
                                                                   @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                                   @RequestParam(value = "pageNum", defaultValue = "1") int pageNum) {
         return BaseResponse.success(createNodePoolEventService.findInstalledGridListDTO(userAddress, epoch, pageSize, pageNum));
+    }
+
+    @GetMapping("getFeeRateFollowingNextEpoch")
+    public BaseResponse<String> getFeeRateFollowingNextEpoch(@RequestParam(value = "tokenId") String tokenId) {
+        String currentEpoch = web3jUtils.getCurrentEpoch();
+        String followingNextEpoch = String.valueOf(Integer.parseInt(currentEpoch) + 2);
+        return BaseResponse.success(epochFeeRateEventService.getFeeRate(tokenId, followingNextEpoch));
     }
 
 }

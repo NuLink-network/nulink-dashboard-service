@@ -72,12 +72,16 @@ public class NodePoolEventsService {
         nodePoolEventsRepository.save(nodePoolEvents);
     }
 
-    public Page<NodePoolEvents> findByUserAddress(String userAddress, String tokenId, String event, int pageSize, int pageNum) {
+    public Page<NodePoolEvents> findByUserAddress(String userAddress, String tokenId, String event, String epoch, int pageSize, int pageNum) {
         String cacheKey = "nodePoolEvent:" + userAddress;
         String countCacheKey = "nodePoolEventCount:" + userAddress;
         if (StringUtils.hasLength(tokenId)){
             cacheKey = cacheKey + ":" + tokenId;
             countCacheKey = countCacheKey + ":" + tokenId;
+        }
+        if (StringUtils.hasLength(epoch)){
+            cacheKey = cacheKey + ":" + epoch;
+            countCacheKey = countCacheKey + ":" + epoch;
         }
         if (StringUtils.hasLength(event)){
             cacheKey = cacheKey + ":" + event;
@@ -116,6 +120,9 @@ public class NodePoolEventsService {
             }
             if (StringUtils.hasLength(tokenId)) {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("tokenId"), tokenId));
+            }
+            if (StringUtils.hasLength(epoch)) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("epoch"), epoch));
             }
             if (StringUtils.hasLength(event)) {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("event"), event));

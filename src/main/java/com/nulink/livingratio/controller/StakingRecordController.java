@@ -52,10 +52,11 @@ public class StakingRecordController {
     @GetMapping("operationRecords")
     public BaseResponse<Page<NodePoolEvents>> findAllByTokenId(@RequestParam(name = "userAddress") String userAddress,
                                                                @RequestParam(name = "tokenId") String tokenId,
+                                                               @RequestParam(name = "epoch") String epoch,
                                                                @ApiParam(name = "event", value = "STAKING,UN_STAKE,CLAIM,CLAIM_REWARD") @RequestParam(name = "event", required = false) String event,
                                                                @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
                                                                @RequestParam(name = "pageNum", defaultValue = "1") Integer pageNum){
-        return BaseResponse.success(nodePoolEventsService.findByUserAddress(userAddress, tokenId, event, pageSize, pageNum));
+        return BaseResponse.success(nodePoolEventsService.findByUserAddress(userAddress, tokenId, event, epoch, pageSize, pageNum));
     }
 
     @ApiOperation(value = "Staking overview")

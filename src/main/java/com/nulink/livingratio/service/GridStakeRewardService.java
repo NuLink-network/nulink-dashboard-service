@@ -905,10 +905,9 @@ public class GridStakeRewardService {
     public int getTotalGridAmount(String epoch){
         String totalGridAmountKey = "TotalGridAmount:" + epoch;
         try {
-            Object value = redisService.get(totalGridAmountKey);
+            String value = (String) redisService.get(totalGridAmountKey);
             if (null != value) {
-
-                return (int) value;
+                return Integer.parseInt(value);
             }
         }catch (Exception e){
             log.error("TotalGridAmount redis read error：{}", e.getMessage());
