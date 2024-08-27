@@ -94,14 +94,15 @@ public class PersonalStakingOverviewService {
             newPersonalStakingOverviewRecord.setReceivedRewardAmount("0");
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         } else {
-            List<ValidPersonalStakingAmount> validPersonalStakingAmounts = validPersonalStakingAmountRepository.findAllByUserAddress(user);
+            List<ValidPersonalStakingAmount> validPersonalStakingAmounts = validPersonalStakingAmountRepository.findAllByUserAddressAndTxHashNot(user, nodePoolEvents.getTxHash());
             Set<String> tokenIds = validPersonalStakingAmounts.stream().map(ValidPersonalStakingAmount::getTokenId).collect(Collectors.toSet());
-            boolean containsTokenId = tokenIds.contains(tokenId);
 
             newPersonalStakingOverviewRecord.setTotalStakingAmount(new BigInteger(stakingOverview.getTotalStakingAmount())
                     .add(new BigInteger(nodePoolEvents.getAmount())).toString());
 
-            if (!containsTokenId){
+            if (tokenIds.contains(tokenId)){
+                newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid());
+            } else {
                 newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid() + 1);
             }
 

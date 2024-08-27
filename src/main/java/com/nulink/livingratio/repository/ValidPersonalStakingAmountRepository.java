@@ -76,4 +76,6 @@ public interface ValidPersonalStakingAmountRepository extends JpaRepository<Vali
 
     ValidPersonalStakingAmount findByTxHash(String txHash);
 
+    List<ValidPersonalStakingAmount> findAllByUserAddressAndTxHashNot(String userAddress, String txHash);
+
 }
