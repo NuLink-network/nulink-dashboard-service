@@ -25,6 +25,8 @@ public class InstalledGridListDTO {
 
     private String nextFeeRatio;
 
+    private String followingNextFeeRatio;
+
     private String feeIncome;
 
     private String gridAddress;

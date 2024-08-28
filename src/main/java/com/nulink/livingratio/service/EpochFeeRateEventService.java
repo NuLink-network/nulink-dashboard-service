@@ -64,6 +64,12 @@ public class EpochFeeRateEventService {
         }
     }
 
+    public String getFollowingNextFeeRate(String tokenId) {
+        String currentEpoch = web3jUtils.getCurrentEpoch();
+        String followingNextEpoch = String.valueOf(Integer.parseInt(currentEpoch) + 2);
+        return getFeeRate(tokenId, followingNextEpoch);
+    }
+
     /*public String getNextFeeRate(String tokenId) {
         String currentEpoch = web3jUtils.getCurrentEpoch();
         Integer nextEpoch = Integer.parseInt(currentEpoch) + 1;

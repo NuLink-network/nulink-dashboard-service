@@ -129,6 +129,8 @@ public class CreateNodePoolEventService {
             } else {
                 installedGridListDTO.setNextFeeRatio(gridStakeReward.getNextFeeRatio());
             }
+            String followingNextEpoch = String.valueOf(Integer.parseInt(epoch) + 2);
+            installedGridListDTO.setFollowingNextFeeRatio(epochFeeRateEventService.getFeeRate(gridStakeReward.getTokenId(), followingNextEpoch));
             installedGridListDTO.setUserAddress(gridStakeReward.getStakingProvider());
             installedGridListDTO.setEpoch(epoch);
             Bond bond = bondRepository.findFirstByStakingProviderOrderByCreateTimeDesc(gridStakeReward.getGridAddress());
