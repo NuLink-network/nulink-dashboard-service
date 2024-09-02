@@ -215,12 +215,14 @@ public class GridStakeRewardService {
 
                 String epoch = web3jUtils.getCurrentEpoch();
                 if (Integer.parseInt(epoch) < 1){
-                    platformTransactionManager.commit(status);
                     return;
                 }
                 log.info("living ratio task start ...........................");
                 List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(epoch);
 
+                if (stakeRewards.isEmpty()){
+                    return;
+                }
 
                 List<String> stakingAddress = stakeRewards.stream().map(GridStakeReward::getGridAddress).collect(Collectors.toList());
                 List<String> nodeAddresses = findNodeAddress(stakingAddress);

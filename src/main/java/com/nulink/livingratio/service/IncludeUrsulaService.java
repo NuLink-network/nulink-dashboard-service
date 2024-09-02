@@ -61,7 +61,7 @@ public class IncludeUrsulaService {
         if (includeUrsula != null){
             try {
                 String pvoStr = JSON.toJSONString(includeUrsula, SerializerFeature.WriteNullStringAsEmpty);
-                redisService.set(getUrsulaNumCacheKey, pvoStr, 1, TimeUnit.HOURS);
+                redisService.set(getUrsulaNumCacheKey, pvoStr, 1, TimeUnit.MINUTES);
             }catch (Exception e){
                 log.error("getUrsulaNum redis write error：{}", e.getMessage());
             }

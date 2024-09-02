@@ -79,10 +79,10 @@ public class NodePoolEventsService {
             cacheKey = cacheKey + ":" + tokenId;
             countCacheKey = countCacheKey + ":" + tokenId;
         }
-        if (StringUtils.hasLength(epoch)){
+        /*if (StringUtils.hasLength(epoch)){
             cacheKey = cacheKey + ":" + epoch;
             countCacheKey = countCacheKey + ":" + epoch;
-        }
+        }*/
         if (StringUtils.hasLength(event)){
             cacheKey = cacheKey + ":" + event;
             countCacheKey = countCacheKey + ":" + event;
@@ -121,9 +121,9 @@ public class NodePoolEventsService {
             if (StringUtils.hasLength(tokenId)) {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("tokenId"), tokenId));
             }
-            if (StringUtils.hasLength(epoch)) {
+            /*if (StringUtils.hasLength(epoch)) {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("epoch"), epoch));
-            }
+            }*/
             if (StringUtils.hasLength(event)) {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("event"), event));
             }
