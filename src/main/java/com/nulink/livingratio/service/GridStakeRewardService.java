@@ -567,6 +567,7 @@ public class GridStakeRewardService {
     public void deleteAllKeys() {
         Set<String> keys = redisTemplate.keys("*");
 
+        assert keys != null;
         for (String key : keys) {
             redisTemplate.delete(key);
         }
