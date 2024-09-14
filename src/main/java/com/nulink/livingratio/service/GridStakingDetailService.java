@@ -188,7 +188,9 @@ public class GridStakingDetailService {
                     gridStakingDetail.setTokenId(personalStakingAmount.getTokenId());
                     gridStakingDetail.setUserAddress(personalStakingAmount.getUserAddress());
                     gridStakingDetail.setStakingAmount(personalStakingAmount.getStakingAmount());
-                    gridStakingDetail.setStakingQuota(new BigDecimal(personalStakingAmount.getStakingAmount()).divide(new BigDecimal(totalStakingAmount.toString()), 4, BigDecimal.ROUND_HALF_UP).toString());
+                    if (totalStakingAmount.compareTo(BigInteger.ZERO) > 0){
+                        gridStakingDetail.setStakingQuota(new BigDecimal(personalStakingAmount.getStakingAmount()).divide(new BigDecimal(totalStakingAmount.toString()), 4, BigDecimal.ROUND_HALF_UP).toString());
+                    }
                     gridStakingDetail.setFeeRatio(currentFeeRate);
                     gridStakingDetail.setStakingReward("0");
                     gridStakingDetails.add(gridStakingDetail);
