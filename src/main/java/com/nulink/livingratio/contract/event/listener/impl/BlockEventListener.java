@@ -174,7 +174,7 @@ public class BlockEventListener {
         }
     }
 
-    public void blocksEventScanner(Integer delayBlocks) throws InterruptedException {
+    public void blocksEventScanner(Integer delayBlocks) throws InterruptedException, NoSuchMethodException {
 
         ContractOffset contractOffset = contractOffsetService.findByContractAddress("Delay" + delayBlocks + "_" + BLOCK_CONTRACT_FLAG);
         BigInteger start;
@@ -218,6 +218,8 @@ public class BlockEventListener {
             if (end.compareTo(now) >= 0) {
                 logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() return  end > now: " + end + " > " + now);
                 break;
+            } else {
+                initialize(null, null);
             }
             TimeUnit.MILLISECONDS.sleep(100);
         }
@@ -252,9 +254,6 @@ public class BlockEventListener {
                 topic = log.getTopics().get(0).toLowerCase();
             } catch (Exception e) {
                 continue;
-            }
-            if (topic.equalsIgnoreCase("0x59c0ec5157fa10f2e8cf2b08d429fd9c8208c840c84400987a7bbc4cd69918f7")){
-                logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() return  topic is null: " + topic);
             }
 
             String topicAddress = topic + "_" + contractAddress;
