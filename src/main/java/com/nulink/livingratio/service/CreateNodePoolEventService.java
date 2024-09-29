@@ -110,11 +110,11 @@ public class CreateNodePoolEventService {
         endIndex = Math.min(endIndex, size);
         List<GridStakeReward> resultList = gridStakeRewards.subList((pageNum - 1) * pageSize, endIndex);
         List<String> gridAddresses = resultList.stream().map(GridStakeReward::getGridAddress).collect(Collectors.toList());
-        List<String> nodeAddress;
+        List<String> nodeAddress = null;
         try {
             nodeAddress = gridStakeRewardService.findNodeAddress(gridAddresses);
         } catch (Exception e){
-            throw new RuntimeException("get ip address error");
+            log.error("get ip address error");
         }
         int index = 0;
         for (GridStakeReward gridStakeReward : resultList) {
@@ -145,13 +145,15 @@ public class CreateNodePoolEventService {
                 installedGridListDTO.setFeeIncome(new BigInteger(gridStakeReward.getStakingReward())
                         .multiply(new BigInteger(gridStakeReward.getCurrentFeeRatio())).divide(new BigInteger("10000")).toString());
             }
-            String url = nodeAddress.get(index);
-            if (!StringUtils.isEmpty(url)){
-                installedGridListDTO.setIpAddress(getIpAddress(url));
-                try {
-                    installedGridListDTO.setOnline(gridStakeRewardService.checkNode(gridStakeReward.getGridAddress()));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+            if(!nodeAddress.isEmpty()){
+                String url = nodeAddress.get(index);
+                if (!StringUtils.isEmpty(url)){
+                    installedGridListDTO.setIpAddress(getIpAddress(url));
+                    try {
+                        installedGridListDTO.setOnline(gridStakeRewardService.checkNode(gridStakeReward.getGridAddress()));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
             index++;

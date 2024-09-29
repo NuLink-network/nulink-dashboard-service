@@ -194,8 +194,9 @@ public class GridStakeRewardService {
     }*/
 
     @Async
-    //@Scheduled(cron = "0 0 * * * ?")
-    @Scheduled(cron = "0 0/5 * * * ? ")
+    @Scheduled(cron = "0 0 * * * ?")
+    //@Scheduled(cron = "0 0/5 * * * ? ")
+    //@Scheduled(cron = "0 0/30 * * * ? ")
     public void livingRatio() {
         synchronized (livingRatioTaskKey) {
             if (GridStakeRewardService.livingRatioTaskFlag) {
@@ -756,6 +757,14 @@ public class GridStakeRewardService {
         Map<String, String> result = new HashMap<>();
         try {
             List<GridStakeReward> all = stakeRewardRepository.findAllByEpoch(epoch);
+            for (GridStakeReward gridStakeReward : all) {
+                if (StringUtils.isBlank(gridStakeReward.getCurrentFeeRatio())){
+                    gridStakeReward.setCurrentFeeRatio(epochFeeRateEventService.getFeeRate(gridStakeReward.getTokenId(), epoch));
+                }
+                if (StringUtils.isBlank(gridStakeReward.getNextFeeRatio())){
+                    gridStakeReward.setNextFeeRatio(epochFeeRateEventService.getFeeRate(gridStakeReward.getTokenId(), epoch));
+                }
+            }
             Set<String> tokenIds = all.stream().map(GridStakeReward::getTokenId).collect(Collectors.toSet());
             List<CreateNodePoolEvent> events = createNodePoolEventRepository.findAll();
             for (CreateNodePoolEvent event : events) {
