@@ -111,7 +111,7 @@ public class NodePoolEventsHandler {
             claim.setUser(EthLogsParser.hexToAddress(topics.get(1)));
             claim.setAmount(args.get(0).getValue().toString());
             claim.setEpoch(args.get(1).getValue().toString());
-            claim.setEpoch(NodePoolEventEnum.CLAIM.getName());
+            claim.setEvent(NodePoolEventEnum.CLAIM.getName());
             claim.setCreateTime(eventHappenedTimeStamp);
             claim.setLastUpdateTime(eventHappenedTimeStamp);
             CreateNodePoolEvent createNodePoolEvent = NodePoolMapSingleton.get(evLog.getAddress());

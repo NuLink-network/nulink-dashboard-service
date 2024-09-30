@@ -14,6 +14,7 @@ import com.nulink.livingratio.repository.GridStakingDetailRepository;
 import com.nulink.livingratio.repository.PersonalStakingOverviewRepository;
 import com.nulink.livingratio.repository.ValidPersonalStakingAmountRepository;
 import com.nulink.livingratio.utils.RedisService;
+import com.nulink.livingratio.utils.Web3jUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.PageImpl;
@@ -38,15 +39,17 @@ public class PersonalStakingOverviewService {
     private final PersonalStakingOverviewRepository personalStakingOverviewRepository;
 
     private final GridStakingDetailRepository gridStakingDetailRepository;
+    private final Web3jUtils web3jUtils;
 
     public PersonalStakingOverviewService(ValidPersonalStakingAmountRepository validPersonalStakingAmountRepository,
                                           RedisService redisService,
                                           PersonalStakingOverviewRepository personalStakingOverviewRepository,
-                                          GridStakingDetailRepository gridStakingDetailRepository) {
+                                          GridStakingDetailRepository gridStakingDetailRepository, Web3jUtils web3jUtils) {
         this.validPersonalStakingAmountRepository = validPersonalStakingAmountRepository;
         this.redisService = redisService;
         this.personalStakingOverviewRepository = personalStakingOverviewRepository;
         this.gridStakingDetailRepository = gridStakingDetailRepository;
+        this.web3jUtils = web3jUtils;
     }
 
     public PersonalStakingOverviewRecord findByTokenIdAndUserAddress(String tokenId, String userAddress) {
@@ -233,8 +236,14 @@ public class PersonalStakingOverviewService {
             userStakingOverviewDTO.setEpoch(overviewRecord.getEpoch());
             userStakingOverviewDTO.setStakeGrids(overviewRecord.getTotalStakingGrid());
             userStakingOverviewDTO.setStakingAmountInPool(overviewRecord.getTotalStakingAmount());
-            userStakingOverviewDTO.setPendingStakingAmount(overviewRecord.getPendingStakingAmount());
-            userStakingOverviewDTO.setClaimablePrinciple(overviewRecord.getClaimablePrincipleAmount());
+            if (new BigInteger(epoch).compareTo(new BigInteger(overviewRecord.getEpoch())) == 0){
+                userStakingOverviewDTO.setPendingStakingAmount(overviewRecord.getPendingStakingAmount());
+                userStakingOverviewDTO.setClaimablePrinciple(overviewRecord.getClaimablePrincipleAmount());
+            } else if (new BigInteger(epoch).compareTo(new BigInteger(overviewRecord.getEpoch())) > 0){
+                userStakingOverviewDTO.setPendingStakingAmount("0");
+                userStakingOverviewDTO.setClaimablePrinciple(new BigInteger(overviewRecord.getClaimablePrincipleAmount()).add(new BigInteger(overviewRecord.getPendingPrincipleAmount())).toString());
+            }
+
             List<GridStakingDetail> stakingDetails = gridStakingDetailRepository.findByUserAddress(userAddress);
             BigInteger accumulatedReward = BigInteger.ZERO;
             for (GridStakingDetail gridStakingDetail : stakingDetails){

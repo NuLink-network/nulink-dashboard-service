@@ -36,7 +36,7 @@ public interface ValidPersonalStakingAmountRepository extends JpaRepository<Vali
             "	) t \n" +
             "WHERE\n" +
             "	vpsa.token_id = :tokenId \n" +
-            "	AND ( vpsa.epoch + 0 ) <= :epoch \n" +
+            "	AND ( vpsa.epoch + 0 ) < :epoch \n" +
             "	AND vpsa.id = t.id", nativeQuery = true)
     List<ValidPersonalStakingAmount> findAllByTokenIdAndEpochLessThanEqual(@Param("tokenId") String tokenId, @Param("epoch") Integer epoch);
 
