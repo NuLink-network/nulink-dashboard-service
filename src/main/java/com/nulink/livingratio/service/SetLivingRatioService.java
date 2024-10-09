@@ -18,14 +18,10 @@ import org.web3j.protocol.exceptions.TransactionException;
 
 import javax.annotation.Resource;
 import javax.transaction.Transactional;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Log4j2
 @Service
@@ -134,7 +130,7 @@ public class SetLivingRatioService {
                     String txHash;
                     int j = 0;
                     do {
-                        txHash = web3jUtils.setStakingReward(epoch, tokenId, gridStakeReward.getStakingReward(), gridStakeReward.getValidStakingAmount());
+                        txHash = web3jUtils.setStakingReward(epoch, tokenId, gridStakeReward.getStakingReward(), gridStakeReward.getStakingAmount());
                         j++;
                         try {
                             TimeUnit.MILLISECONDS.sleep(10000);

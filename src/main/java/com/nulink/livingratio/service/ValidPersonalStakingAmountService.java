@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -52,13 +53,15 @@ public class ValidPersonalStakingAmountService {
 
         // Get the last record in tokenId and userAddress
         ValidPersonalStakingAmount personalStakingAmount =
-                validPersonalStakingAmountRepository.findFirstByTokenIdAndUserAddressOrderByCreateTimeDesc(tokenId, stakeUser);
+                validPersonalStakingAmountRepository.findFirstByTokenIdAndUserAddressAndCreateTimeBefore(tokenId, stakeUser, staking.getCreateTime());
 
         ValidPersonalStakingAmount newStakingAmount = new ValidPersonalStakingAmount();
         newStakingAmount.setUserAddress(stakeUser);
         newStakingAmount.setTokenId(tokenId);
         newStakingAmount.setEpoch(Integer.parseInt(epoch));
         newStakingAmount.setTxHash(staking.getTxHash());
+        newStakingAmount.setCreateTime(staking.getCreateTime());
+        newStakingAmount.setLastUpdateTime(staking.getLastUpdateTime());
         if (null != personalStakingAmount){
             if (STAKE_EVENT.equalsIgnoreCase(event)){
                 newStakingAmount.setStakingAmount(new BigDecimal(personalStakingAmount.getStakingAmount()).add(new BigDecimal(staking.getAmount())).toString());
@@ -116,5 +119,13 @@ public class ValidPersonalStakingAmountService {
             }
         }
         return new PageImpl<>(validPersonalStakingAmounts, PageRequest.of(pageNum - 1, pageSize), stakingAmounts.size());
+    }
+
+    public List<ValidPersonalStakingAmount> findAllByUserAddressAndCreateTimeAfter(String user, Timestamp createTime){
+        return validPersonalStakingAmountRepository.findAllByUserAddressAndCreateTimeAfter(user, createTime);
+    }
+
+    public void deleteAll(List<ValidPersonalStakingAmount> validPersonalStakingAmounts){
+        validPersonalStakingAmountRepository.deleteAll(validPersonalStakingAmounts);
     }
 }

@@ -14,7 +14,9 @@ import javax.persistence.Table;
         @javax.persistence.Index(name = "tx_hash_index", columnList = "tx_hash", unique = true),
         @javax.persistence.Index(name = "user_index", columnList = "user"),
         @Index(name = "epoch_index", columnList = "epoch"),
-        @Index(name = "event_index", columnList = "event")
+        @Index(name = "event_index", columnList = "event"),
+        @Index(name = "token_id_index", columnList = "token_id"),
+        @Index(name = "create_time_index", columnList = "create_time")
 })
 public class NodePoolEvents extends BaseEntity {
 

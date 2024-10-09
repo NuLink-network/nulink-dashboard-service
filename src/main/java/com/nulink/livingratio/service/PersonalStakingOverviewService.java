@@ -11,6 +11,7 @@ import com.nulink.livingratio.entity.StakeRewardOverview;
 import com.nulink.livingratio.entity.ValidPersonalStakingAmount;
 import com.nulink.livingratio.entity.event.NodePoolEvents;
 import com.nulink.livingratio.repository.GridStakingDetailRepository;
+import com.nulink.livingratio.repository.NodePoolEventsRepository;
 import com.nulink.livingratio.repository.PersonalStakingOverviewRepository;
 import com.nulink.livingratio.repository.ValidPersonalStakingAmountRepository;
 import com.nulink.livingratio.utils.RedisService;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -38,42 +40,26 @@ public class PersonalStakingOverviewService {
 
     private final PersonalStakingOverviewRepository personalStakingOverviewRepository;
 
+    private final NodePoolEventsRepository nodePoolEventsRepository;
+
     private final GridStakingDetailRepository gridStakingDetailRepository;
     private final Web3jUtils web3jUtils;
 
     public PersonalStakingOverviewService(ValidPersonalStakingAmountRepository validPersonalStakingAmountRepository,
                                           RedisService redisService,
                                           PersonalStakingOverviewRepository personalStakingOverviewRepository,
+                                          NodePoolEventsRepository nodePoolEventsRepository,
                                           GridStakingDetailRepository gridStakingDetailRepository, Web3jUtils web3jUtils) {
         this.validPersonalStakingAmountRepository = validPersonalStakingAmountRepository;
         this.redisService = redisService;
         this.personalStakingOverviewRepository = personalStakingOverviewRepository;
+        this.nodePoolEventsRepository = nodePoolEventsRepository;
         this.gridStakingDetailRepository = gridStakingDetailRepository;
         this.web3jUtils = web3jUtils;
     }
 
     public PersonalStakingOverviewRecord findByTokenIdAndUserAddress(String tokenId, String userAddress) {
         return personalStakingOverviewRepository.findByTokenIdAndUserAddress(tokenId, userAddress);
-    }
-
-    @Transactional
-    public void handleNodePoolEvent(NodePoolEvents nodePoolEvents) {
-        switch (nodePoolEvents.getEvent()){
-            case "STAKING":
-                handleStakingEvent(nodePoolEvents);
-                break;
-            case "UN_STAKING":
-                handleUnStakingEvent(nodePoolEvents);
-                break;
-            case "CLAIM":
-                handleClaimEvent(nodePoolEvents);
-                break;
-            case "CLAIM_REWARD":
-                handleClaimRewardEvent(nodePoolEvents);
-                break;
-            default:
-                log.error("unknown event: {}", nodePoolEvents.getEvent());
-        }
     }
 
     @Transactional()
@@ -95,20 +81,15 @@ public class PersonalStakingOverviewService {
             newPersonalStakingOverviewRecord.setClaimablePrincipleAmount("0");
             newPersonalStakingOverviewRecord.setPendingPrincipleAmount("0");
             newPersonalStakingOverviewRecord.setReceivedRewardAmount("0");
+            newPersonalStakingOverviewRecord.setCreateTime(nodePoolEvents.getCreateTime());
+            newPersonalStakingOverviewRecord.setLastUpdateTime(nodePoolEvents.getCreateTime());
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         } else {
-            List<ValidPersonalStakingAmount> validPersonalStakingAmounts = validPersonalStakingAmountRepository.findAllByUserAddressAndTxHashNot(user, nodePoolEvents.getTxHash());
-            Set<String> tokenIds = validPersonalStakingAmounts.stream().map(ValidPersonalStakingAmount::getTokenId).collect(Collectors.toSet());
 
             newPersonalStakingOverviewRecord.setTotalStakingAmount(new BigInteger(stakingOverview.getTotalStakingAmount())
                     .add(new BigInteger(nodePoolEvents.getAmount())).toString());
 
-            if (tokenIds.contains(tokenId)){
-                newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid());
-            } else {
-                newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid() + 1);
-            }
-
+            newPersonalStakingOverviewRecord.setTotalStakingGrid(calculateStakingGrid(user, nodePoolEvents.getTxHash(), nodePoolEvents.getCreateTime(), nodePoolEvents.getTokenId()));
             newPersonalStakingOverviewRecord.setReceivedRewardAmount(stakingOverview.getReceivedRewardAmount());
             newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
 
@@ -123,8 +104,25 @@ public class PersonalStakingOverviewService {
                         new BigInteger(StringUtils.isBlank(stakingOverview.getClaimablePrincipleAmount())? "0" : stakingOverview.getClaimablePrincipleAmount())
                                 .add(new BigInteger(StringUtils.isBlank(stakingOverview.getPendingPrincipleAmount())? "0" : stakingOverview.getPendingPrincipleAmount())).toString());
             }
+            newPersonalStakingOverviewRecord.setCreateTime(nodePoolEvents.getCreateTime());
+            newPersonalStakingOverviewRecord.setLastUpdateTime(nodePoolEvents.getCreateTime());
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         }
+    }
+
+    private Integer calculateStakingGrid(String user, String currentTxHash, Timestamp createTime, String eventTokenId){
+        List<NodePoolEvents> nodePoolEvents = nodePoolEventsRepository.findAllByUserAndTxHashNotAndCreateTimeBeforeOrderByCreateTime(user, currentTxHash, createTime);
+        Set<String> tokenIds = new java.util.HashSet<>();
+        for (NodePoolEvents nodePoolEvent : nodePoolEvents) {
+            String tokenId = nodePoolEvent.getTokenId();
+            if (nodePoolEvent.getEvent().equals("STAKING")){
+                tokenIds.add(tokenId);
+            } else if (nodePoolEvent.getEvent().equals("UN_STAKING")){
+                tokenIds.remove(tokenId);
+            }
+        }
+        tokenIds.add(eventTokenId);
+        return tokenIds.size();
     }
 
     @Transactional
@@ -157,6 +155,8 @@ public class PersonalStakingOverviewService {
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
                         new BigInteger(stakingOverview.getClaimablePrincipleAmount()).add(new BigInteger(stakingOverview.getPendingPrincipleAmount())).toString());
             }
+            newPersonalStakingOverviewRecord.setCreateTime(nodePoolEvents.getCreateTime());
+            newPersonalStakingOverviewRecord.setLastUpdateTime(nodePoolEvents.getCreateTime());
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         }
     }
@@ -189,6 +189,8 @@ public class PersonalStakingOverviewService {
                                 .add(new BigInteger(stakingOverview.getPendingPrincipleAmount()))
                                 .subtract(new BigInteger(nodePoolEvents.getAmount())).toString());
             }
+            newPersonalStakingOverviewRecord.setCreateTime(nodePoolEvents.getCreateTime());
+            newPersonalStakingOverviewRecord.setLastUpdateTime(nodePoolEvents.getCreateTime());
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         }
     }
@@ -216,6 +218,9 @@ public class PersonalStakingOverviewService {
                         new BigInteger(stakingOverview.getClaimablePrincipleAmount()).add(new BigInteger(stakingOverview.getPendingPrincipleAmount())).toString());
             }
         }
+        newPersonalStakingOverviewRecord.setCreateTime(nodePoolEvents.getCreateTime());
+        newPersonalStakingOverviewRecord.setLastUpdateTime(nodePoolEvents.getCreateTime());
+        personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
     }
 
     public UserStakingOverviewDTO findUserStakingOverview(String userAddress, String epoch){
@@ -264,6 +269,14 @@ public class PersonalStakingOverviewService {
             log.error("StakeRewardOverview findLastEpoch redis write error：{}", e.getMessage());
         }
         return userStakingOverviewDTO;
+    }
+
+    public List<PersonalStakingOverviewRecord> findAllByUserAddressAndCreateTimeAfter(String userAddress, Timestamp createTime){
+        return personalStakingOverviewRepository.findAllByUserAddressAndCreateTimeAfter(userAddress, createTime);
+    }
+
+    public void deleteAll(List<PersonalStakingOverviewRecord> personalStakingOverviewRecords){
+        personalStakingOverviewRepository.deleteAll(personalStakingOverviewRecords);
     }
 }
 

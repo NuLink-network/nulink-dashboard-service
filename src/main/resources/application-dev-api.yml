@@ -46,19 +46,19 @@ contracts:
   contractList:
     -
       name: 'NodePoolFactory' # CreateNodePool
-      address: '0xFc832266A4485aF55447fD519827130C5C3B3564'
+      address: '0x85263d080D721Df108Ff4ac591B58073e4C55019'
       enabled: true
     -
       name: 'NodePoolStakingManager' # OperatorBonded
-      address: '0x7422a2938A29E3E2e82DD0Ab118061797e75Deb9'
+      address: '0x33fe3307b269885579F967684f98a02E7DAF5154'
       enabled: true
     -
       name: 'NuLinkStakingSetting'
-      address: '0xc5b9384d4b3893f4A47E5a1fe7936Dacd5EBE2Dc'
+      address: '0xAe3f1dFd6AF308276599432e1E5B533988cF0591'
       enabled: true
     -
       name: 'NodePoolRouter'
-      address: '0xB26a4D56E0dB2103b118b724BFf5003a4DBA82CF'
+      address: '0x38FADE47A04786db7d41750cf66a6954899334ea'
       enabled: true
 
 web3j:

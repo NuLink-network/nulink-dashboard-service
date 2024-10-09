@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Repository
@@ -70,12 +71,14 @@ public interface ValidPersonalStakingAmountRepository extends JpaRepository<Vali
 
     List<ValidPersonalStakingAmount> findAllByTokenId(String tokenId);
 
-    ValidPersonalStakingAmount findFirstByTokenIdAndUserAddressOrderByCreateTimeDesc(String tokenId, String userAddress);
+    ValidPersonalStakingAmount findFirstByTokenIdAndUserAddressAndCreateTimeBefore(String tokenId, String userAddress, Timestamp createTime);
 
     List<ValidPersonalStakingAmount> findAllByUserAddress(String userAddress);
 
     ValidPersonalStakingAmount findByTxHash(String txHash);
 
     List<ValidPersonalStakingAmount> findAllByUserAddressAndTxHashNot(String userAddress, String txHash);
+
+    List<ValidPersonalStakingAmount> findAllByUserAddressAndCreateTimeAfter(String userAddress, Timestamp createTime);
 
 }

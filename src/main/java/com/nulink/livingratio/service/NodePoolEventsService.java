@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.nulink.livingratio.constant.NodePoolEventEnum;
+import com.nulink.livingratio.entity.PersonalStakingOverviewRecord;
+import com.nulink.livingratio.entity.ValidPersonalStakingAmount;
 import com.nulink.livingratio.entity.event.NodePoolEvents;
 import com.nulink.livingratio.repository.NodePoolEventsRepository;
 import com.nulink.livingratio.utils.RedisService;
@@ -16,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import javax.persistence.criteria.Predicate;
 import javax.transaction.Transactional;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -39,6 +42,22 @@ public class NodePoolEventsService {
         this.validPersonalStakingAmountService = validPersonalStakingAmountService;
         this.personalStakingOverviewService = personalStakingOverviewService;
         this.redisService = redisService;
+    }
+
+    @Transactional
+    public void deleteAfterEvents(String user, Timestamp eventHappenedTimeStamp) {
+        List<NodePoolEvents> nodePoolEvents = nodePoolEventsRepository.findAllByUserAndCreateTimeAfter(user, eventHappenedTimeStamp);
+        if (!nodePoolEvents.isEmpty()){
+            nodePoolEventsRepository.deleteAll(nodePoolEvents);
+        }
+        List<ValidPersonalStakingAmount> personalStakingAmounts = validPersonalStakingAmountService.findAllByUserAddressAndCreateTimeAfter(user, eventHappenedTimeStamp);
+        if (!personalStakingAmounts.isEmpty()){
+            validPersonalStakingAmountService.deleteAll(personalStakingAmounts);
+        }
+        List<PersonalStakingOverviewRecord> records = personalStakingOverviewService.findAllByUserAddressAndCreateTimeAfter(user, eventHappenedTimeStamp);
+        if (!records.isEmpty()){
+            personalStakingOverviewService.deleteAll(records);
+        }
     }
 
     @Transactional
