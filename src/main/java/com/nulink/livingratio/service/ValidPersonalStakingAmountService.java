@@ -53,7 +53,7 @@ public class ValidPersonalStakingAmountService {
 
         // Get the last record in tokenId and userAddress
         ValidPersonalStakingAmount personalStakingAmount =
-                validPersonalStakingAmountRepository.findFirstByTokenIdAndUserAddressAndCreateTimeBefore(tokenId, stakeUser, staking.getCreateTime());
+                validPersonalStakingAmountRepository.findFirstByTokenIdAndUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(tokenId, stakeUser, staking.getCreateTime());
 
         ValidPersonalStakingAmount newStakingAmount = new ValidPersonalStakingAmount();
         newStakingAmount.setUserAddress(stakeUser);

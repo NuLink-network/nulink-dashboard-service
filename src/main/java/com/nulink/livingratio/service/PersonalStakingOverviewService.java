@@ -72,7 +72,7 @@ public class PersonalStakingOverviewService {
                         nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.STAKING.getName());
 
-        PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(user);
+        PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(user, nodePoolEvents.getCreateTime());
         if (stakingOverview == null){
             // first staking
             newPersonalStakingOverviewRecord.setTotalStakingAmount(nodePoolEvents.getAmount());
@@ -85,19 +85,20 @@ public class PersonalStakingOverviewService {
             newPersonalStakingOverviewRecord.setLastUpdateTime(nodePoolEvents.getCreateTime());
             personalStakingOverviewRepository.save(newPersonalStakingOverviewRecord);
         } else {
-
+            log.info("+++++++++++++++++++++++++++++nodePoolEvents staking amount:{}", nodePoolEvents.getAmount());
             newPersonalStakingOverviewRecord.setTotalStakingAmount(new BigInteger(stakingOverview.getTotalStakingAmount())
                     .add(new BigInteger(nodePoolEvents.getAmount())).toString());
 
             newPersonalStakingOverviewRecord.setTotalStakingGrid(calculateStakingGrid(user, nodePoolEvents.getTxHash(), nodePoolEvents.getCreateTime(), nodePoolEvents.getTokenId()));
             newPersonalStakingOverviewRecord.setReceivedRewardAmount(stakingOverview.getReceivedRewardAmount());
-            newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
 
             if (nodePoolEvents.getEpoch().equals(stakingOverview.getEpoch())){
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(stakingOverview.getClaimablePrincipleAmount());
                 newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(stakingOverview.getPendingStakingAmount())
                         .add(new BigInteger(nodePoolEvents.getAmount())).toString());
             } else {
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount("0");
                 newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(nodePoolEvents.getAmount()).toString());
                 // claimable principle amount
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
@@ -135,23 +136,32 @@ public class PersonalStakingOverviewService {
                         tokenId,
                         nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.UN_STAKING.getName());
-        PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(nodePoolEvents.getUser());
+        PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(nodePoolEvents.getUser(), nodePoolEvents.getCreateTime());
         if (stakingOverview != null){
             String lockAmount = nodePoolEvents.getLockAmount();
             String unlockAmount = nodePoolEvents.getUnlockAmount();
             newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid() - 1);
             newPersonalStakingOverviewRecord.setReceivedRewardAmount(stakingOverview.getReceivedRewardAmount());
-            newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(stakingOverview.getPendingStakingAmount())
-                    .subtract(new BigInteger(unlockAmount)).toString());
             newPersonalStakingOverviewRecord.setTotalStakingAmount(new BigInteger(stakingOverview.getTotalStakingAmount())
-                    .subtract(new BigInteger(unlockAmount)).toString());
-            newPersonalStakingOverviewRecord.setPendingPrincipleAmount(new BigInteger(stakingOverview.getPendingPrincipleAmount())
-                    .add(new BigInteger(lockAmount)).toString());
+                    .subtract(new BigInteger(nodePoolEvents.getAmount())).toString());
 
             if (nodePoolEvents.getEpoch().equals(stakingOverview.getEpoch())){
+
+                newPersonalStakingOverviewRecord.setPendingStakingAmount(new BigInteger(stakingOverview.getPendingStakingAmount())
+                        .subtract(new BigInteger(unlockAmount)).toString());
+
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount(new BigInteger(stakingOverview.getPendingPrincipleAmount())
+                        .add(new BigInteger(lockAmount)).toString());
+
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(stakingOverview.getClaimablePrincipleAmount());
+
             } else {
-                // epoch change, claimable principle amount = claimable principle amount + pending principle amount
+
+                newPersonalStakingOverviewRecord.setPendingStakingAmount("0");
+
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount(lockAmount);
+
+                // epoch change, claimable principle amount = claimable principle amount + pending principle amount + unlock amount
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
                         new BigInteger(stakingOverview.getClaimablePrincipleAmount()).add(new BigInteger(stakingOverview.getPendingPrincipleAmount())).toString());
             }
@@ -169,19 +179,25 @@ public class PersonalStakingOverviewService {
                         nodePoolEvents.getTokenId(),
                         nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.CLAIM.getName());
-        PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(nodePoolEvents.getUser());
+        PersonalStakingOverviewRecord stakingOverview =
+                personalStakingOverviewRepository.findFirstByUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(nodePoolEvents.getUser(), nodePoolEvents.getCreateTime());
         if (stakingOverview != null){
             newPersonalStakingOverviewRecord.setReceivedRewardAmount(stakingOverview.getReceivedRewardAmount());
-            newPersonalStakingOverviewRecord.setPendingStakingAmount(stakingOverview.getPendingStakingAmount());
             newPersonalStakingOverviewRecord.setTotalStakingAmount(stakingOverview.getTotalStakingAmount());
             newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid());
-            newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
 
             if (nodePoolEvents.getEpoch().equals(stakingOverview.getEpoch())){
+
+                newPersonalStakingOverviewRecord.setPendingStakingAmount(stakingOverview.getPendingStakingAmount());
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
+
                 // epoch not changed, claimable principle amount = claimable principle amount - claim event amount
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
                         new BigInteger(stakingOverview.getClaimablePrincipleAmount()).subtract(new BigInteger(nodePoolEvents.getAmount())).toString());
             } else {
+
+                newPersonalStakingOverviewRecord.setPendingStakingAmount("0");
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount("0");
 
                 // epoch changed, claimable principle amount = pending principle amount + claimable principle amount - claim event amount
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
@@ -203,16 +219,23 @@ public class PersonalStakingOverviewService {
                         nodePoolEvents.getTokenId(),
                         nodePoolEvents.getTxHash(),
                         NodePoolEventEnum.CLAIM_REWARD.getName());
-        PersonalStakingOverviewRecord stakingOverview = personalStakingOverviewRepository.findFirstByUserAddressOrderByCreateTimeDesc(nodePoolEvents.getUser());
+        PersonalStakingOverviewRecord stakingOverview =
+                personalStakingOverviewRepository.findFirstByUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(nodePoolEvents.getUser(), nodePoolEvents.getCreateTime());
         if (stakingOverview != null){
-            newPersonalStakingOverviewRecord.setPendingStakingAmount(stakingOverview.getPendingStakingAmount());
             newPersonalStakingOverviewRecord.setTotalStakingAmount(stakingOverview.getTotalStakingAmount());
             newPersonalStakingOverviewRecord.setTotalStakingGrid(stakingOverview.getTotalStakingGrid());
-            newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
             newPersonalStakingOverviewRecord.setReceivedRewardAmount(new BigInteger(stakingOverview.getReceivedRewardAmount()).add(new BigInteger(nodePoolEvents.getAmount())).toString());
             if (nodePoolEvents.getEpoch().equals(stakingOverview.getEpoch())){
+
+                newPersonalStakingOverviewRecord.setPendingStakingAmount(stakingOverview.getPendingStakingAmount());
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount(stakingOverview.getPendingPrincipleAmount());
+
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(stakingOverview.getClaimablePrincipleAmount());
             } else {
+
+                newPersonalStakingOverviewRecord.setPendingStakingAmount("0");
+                newPersonalStakingOverviewRecord.setPendingPrincipleAmount("0");
+
                 // epoch change, claimable principle amount = claimable principle amount + pending principle amount
                 newPersonalStakingOverviewRecord.setClaimablePrincipleAmount(
                         new BigInteger(stakingOverview.getClaimablePrincipleAmount()).add(new BigInteger(stakingOverview.getPendingPrincipleAmount())).toString());

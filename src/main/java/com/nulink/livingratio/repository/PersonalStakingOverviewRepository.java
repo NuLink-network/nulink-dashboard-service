@@ -17,7 +17,7 @@ public interface PersonalStakingOverviewRepository extends PagingAndSortingRepos
 
     PersonalStakingOverviewRecord findByTokenIdAndUserAddressAndEpoch(String tokenId, String userAddress, String epoch);
 
-    PersonalStakingOverviewRecord findFirstByUserAddressOrderByCreateTimeDesc(String userAddress);
+    PersonalStakingOverviewRecord findFirstByUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(String userAddress, Timestamp createTime);
 
     @Query(value = "select * from personal_staking_overview_record p where p.user_address = :userAddress and p.epoch + 0 <= :epoch order by p.create_time desc limit 1 ", nativeQuery = true)
     PersonalStakingOverviewRecord findFirstByUserAddressAndEpochLessThanEqualOrderByCreateTimeDesc(@Param("userAddress") String userAddress, @Param("epoch") String epoch);

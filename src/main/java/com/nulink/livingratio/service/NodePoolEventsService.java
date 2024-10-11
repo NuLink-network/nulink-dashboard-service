@@ -73,6 +73,7 @@ public class NodePoolEventsService {
         if (event != null) {
             return;
         }
+        deleteAfterEvents(nodePoolEvents.getUser(), nodePoolEvents.getCreateTime());
         if (nodePoolEvents.getEvent().equals(NodePoolEventEnum.STAKING.getName()) || nodePoolEvents.getEvent().equals(NodePoolEventEnum.UN_STAKING.getName())){
             validPersonalStakingAmountService.updateValidPersonalStakingAmount(nodePoolEvents);
         }
@@ -152,7 +153,7 @@ public class NodePoolEventsService {
         if (!page.getContent().isEmpty()){
             try {
                 String pvoStr = JSON.toJSONString(page.getContent(), SerializerFeature.WriteNullStringAsEmpty);
-                redisService.set(cacheKey, pvoStr, 20, TimeUnit.SECONDS);
+                redisService.set(cacheKey, pvoStr, 10, TimeUnit.SECONDS);
                 redisService.set(countCacheKey, page.getTotalElements());
             }catch (Exception e){
                 log.error("NodePoolEvents findByUserAddress  redis write error：{}", e.getMessage());

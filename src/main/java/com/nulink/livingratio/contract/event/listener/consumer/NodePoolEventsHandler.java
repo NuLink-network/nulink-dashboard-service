@@ -60,7 +60,7 @@ public class NodePoolEventsHandler {
             }
             stake.setCreateTime(eventHappenedTimeStamp);
             stake.setLastUpdateTime(eventHappenedTimeStamp);
-            nodePoolEventsService.deleteAfterEvents(stake.getUser(), eventHappenedTimeStamp);
+            //nodePoolEventsService.deleteAfterEvents(stake.getUser(), eventHappenedTimeStamp);
             nodePoolEventsService.save(stake);
         } else if (!CollectionUtils.isEmpty(topics)) {
             String from = EthLogsParser.hexToAddress(topics.get(1));
@@ -91,7 +91,7 @@ public class NodePoolEventsHandler {
             if (createNodePoolEvent != null){
                 stake.setTokenId(createNodePoolEvent.getTokenId());
             }
-            nodePoolEventsService.deleteAfterEvents(stake.getUser(), eventHappenedTimeStamp);
+           // nodePoolEventsService.deleteAfterEvents(stake.getUser(), eventHappenedTimeStamp);
             nodePoolEventsService.save(stake);
         } else if (!CollectionUtils.isEmpty(topics)) {
             String from = EthLogsParser.hexToAddress(topics.get(1));
@@ -120,7 +120,7 @@ public class NodePoolEventsHandler {
             if (createNodePoolEvent != null){
                 claim.setTokenId(createNodePoolEvent.getTokenId());
             }
-            nodePoolEventsService.deleteAfterEvents(claim.getUser(), eventHappenedTimeStamp);
+            //nodePoolEventsService.deleteAfterEvents(claim.getUser(), eventHappenedTimeStamp);
             nodePoolEventsService.save(claim);
         } else if (!CollectionUtils.isEmpty(topics)) {
             String from = EthLogsParser.hexToAddress(topics.get(1));
@@ -150,7 +150,7 @@ public class NodePoolEventsHandler {
             if (createNodePoolEvent != null){
                 claimReward.setTokenId(createNodePoolEvent.getTokenId());
             }
-            nodePoolEventsService.deleteAfterEvents(claimReward.getUser(), eventHappenedTimeStamp);
+            //nodePoolEventsService.deleteAfterEvents(claimReward.getUser(), eventHappenedTimeStamp);
             nodePoolEventsService.save(claimReward);
         } else if (!CollectionUtils.isEmpty(topics)) {
             String from = EthLogsParser.hexToAddress(topics.get(1));

@@ -71,7 +71,7 @@ public interface ValidPersonalStakingAmountRepository extends JpaRepository<Vali
 
     List<ValidPersonalStakingAmount> findAllByTokenId(String tokenId);
 
-    ValidPersonalStakingAmount findFirstByTokenIdAndUserAddressAndCreateTimeBefore(String tokenId, String userAddress, Timestamp createTime);
+    ValidPersonalStakingAmount findFirstByTokenIdAndUserAddressAndCreateTimeBeforeOrderByCreateTimeDesc(String tokenId, String userAddress, Timestamp createTime);
 
     List<ValidPersonalStakingAmount> findAllByUserAddress(String userAddress);
 
