@@ -4,6 +4,7 @@ import com.nulink.livingratio.config.ContractsConfig;
 import com.nulink.livingratio.contract.event.listener.consumer.BondEventHandler;
 import com.nulink.livingratio.contract.event.listener.consumer.CreateNodePoolEventHandler;
 import com.nulink.livingratio.contract.event.listener.consumer.NodePoolEventsHandler;
+import com.nulink.livingratio.contract.event.listener.consumer.SendFeeEventHandler;
 import com.nulink.livingratio.contract.event.listener.filter.events.ContractsEventEnum;
 import com.nulink.livingratio.contract.event.listener.filter.events.impl.ContractsEventBuilder;
 import com.nulink.livingratio.entity.ContractOffset;
@@ -124,13 +125,22 @@ public class BlockEventListener {
             topicAndContractAddr2CallBackMap.put(topicEventBuyBlindBox + "_" + stakingManagerCI.getAddress(), BondEventHandler.class.getMethod("descOperatorBonded", Log.class /*,secondParameterTypeClass.class*/));
         }
 
-        ContractsConfig.ContractInfo nodePoolFactory = contractsConfig.getContractInfo("NodePoolFactory");
+        ContractsConfig.ContractInfo nodePoolFactoryCI = contractsConfig.getContractInfo("NodePoolFactory");
 
-        if (isTaskEnable(enablesTaskNames, disableTaskNames, stakingManagerCI.getName()) && stakingManagerCI.getEnabled()) {
+        if (isTaskEnable(enablesTaskNames, disableTaskNames, nodePoolFactoryCI.getName()) && nodePoolFactoryCI.getEnabled()) {
             Event createNodePoolEvent = new ContractsEventBuilder().build(ContractsEventEnum.CREATE_NODE_POOL);
             String createNodePoolEventTopic = EventEncoder.encode(createNodePoolEvent).toLowerCase();
-            topicAndContractAddr2EventMap.put(createNodePoolEventTopic + "_" + nodePoolFactory.getAddress(), createNodePoolEvent);
-            topicAndContractAddr2CallBackMap.put(createNodePoolEventTopic + "_" + nodePoolFactory.getAddress(), CreateNodePoolEventHandler.class.getMethod("descCreateNodePool", Log.class /*,secondParameterTypeClass.class*/));
+            topicAndContractAddr2EventMap.put(createNodePoolEventTopic + "_" + nodePoolFactoryCI.getAddress(), createNodePoolEvent);
+            topicAndContractAddr2CallBackMap.put(createNodePoolEventTopic + "_" + nodePoolFactoryCI.getAddress(), CreateNodePoolEventHandler.class.getMethod("descCreateNodePool", Log.class /*,secondParameterTypeClass.class*/));
+        }
+
+        ContractsConfig.ContractInfo nodePoolRouterCI = contractsConfig.getContractInfo("NodePoolVaultProxy");
+
+        if (isTaskEnable(enablesTaskNames, disableTaskNames, nodePoolRouterCI.getName()) && nodePoolRouterCI.getEnabled()) {
+            Event sendFeeEvent = new ContractsEventBuilder().build(ContractsEventEnum.SEND_FEE);
+            String sendFeeEventTopic = EventEncoder.encode(sendFeeEvent).toLowerCase();
+            topicAndContractAddr2EventMap.put(sendFeeEventTopic + "_" + nodePoolRouterCI.getAddress(), sendFeeEvent);
+            topicAndContractAddr2CallBackMap.put(sendFeeEventTopic + "_" + nodePoolRouterCI.getAddress(), SendFeeEventHandler.class.getMethod("descSendFeeEvent", Log.class));
         }
 
         initNodePoolEvent();

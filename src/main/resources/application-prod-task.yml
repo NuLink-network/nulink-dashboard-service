@@ -63,6 +63,10 @@ contracts:
       address: '0xB26a4D56E0dB2103b118b724BFf5003a4DBA82CF'
       enabled: true
 
+    - name: 'NodePoolVault'
+      address: '0x0c7c0e7e6b8b8e9e8e8e8e8e8e8e8e8e8e8e8e8e8'
+      enabled: true
+
 web3j:
   client-address:
     official: https://data-seed-prebsc-1-s1.bnbchain.org:8545

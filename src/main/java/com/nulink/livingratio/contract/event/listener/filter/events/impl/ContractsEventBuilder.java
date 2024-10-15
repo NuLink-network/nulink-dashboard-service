@@ -41,6 +41,10 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
                 return getCreateNodePoolEvent();
             case CREATE_NODE_POOL_DESC:
                  return getCreateNodePoolDescEvent();
+            case SEND_FEE:
+                return getSendFeeEvent();
+            case SEND_FEE_DESC:
+                return getSendFeeEventDesc();
             default:
                 return null;
         }
@@ -194,6 +198,25 @@ public class ContractsEventBuilder implements EventBuilder<ContractsEventEnum> {
                         new TypeReference<Uint256>(true) {},
                         // _owner
                         new TypeReference<Address>(true) {}
+                ));
+    }
+
+    public static Event getSendFeeEvent() {
+        return new Event("SendFee",
+                Arrays.asList(
+                   new TypeReference<Uint256>(true) {}, // poolId
+                        new TypeReference<Uint256>(false) {}, // epochId
+                        new TypeReference<Address>(false) {}, // user
+                        new TypeReference<Uint256>(false) {} // amount
+                ));
+    }
+
+    public static Event getSendFeeEventDesc() {
+        return new Event("SendFee",
+                Arrays.asList(
+                        new TypeReference<Uint256>(false) {}, // epochId
+                        new TypeReference<Address>(false) {}, // user
+                        new TypeReference<Uint256>(false) {} // amount
                 ));
     }
 }

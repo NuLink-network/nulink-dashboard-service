@@ -26,6 +26,10 @@ public enum ContractsEventEnum {
 
     CREATE_NODE_POOL,
 
-    CREATE_NODE_POOL_DESC
+    CREATE_NODE_POOL_DESC,
+
+    SEND_FEE,
+
+    SEND_FEE_DESC,
 
 }

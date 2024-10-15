@@ -64,6 +64,11 @@ contracts:
       name: 'NodePoolRouter'
       address: '0x38FADE47A04786db7d41750cf66a6954899334ea'
       enabled: true
+
+    - name: 'NodePoolVaultProxy'
+      address: '0xc2677c74f5Db6859497E4dBaE49c5625B658d94C'
+      enabled: true
+
 web3j:
   client-address:
     official: https://data-seed-prebsc-1-s1.bnbchain.org:8545
