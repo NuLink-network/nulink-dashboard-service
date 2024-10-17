@@ -792,7 +792,7 @@ public class GridStakeRewardService {
             result.put("stakeRewards", pvoStr);
             cacheResults(cacheKey, countCacheKey, stakeRewards, all.size());
         }catch (Exception e){
-            log.error("Error reading from database", e);
+            log.error("Error reading from database", e.fillInStackTrace());
         }
         redisService.del(stakeRewardQueryKey);
         return result;
