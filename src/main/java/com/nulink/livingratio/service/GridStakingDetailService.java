@@ -124,6 +124,9 @@ public class GridStakingDetailService {
                 }
 
                 List<CreateNodePoolEvent> nodePools = createNodePoolEventService.findAll();
+                if (nodePools.isEmpty()){
+                    return;
+                }
                 ExecutorService executorService = Executors.newFixedThreadPool((Math.min(nodePools.size(), 10)));
 
                 for (CreateNodePoolEvent pool : nodePools) {

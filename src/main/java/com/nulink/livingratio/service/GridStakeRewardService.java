@@ -278,13 +278,13 @@ public class GridStakeRewardService {
                 StakeRewardOverview stakeRewardOverview = stakingRewardOverviewService.getStakeRewardOverview(stakeRewards, epoch);
                 stakingRewardOverviewService.saveByEpoch(stakeRewardOverview);
                 log.info("living ratio task finish ...........................");
+                platformTransactionManager.commit(status);
             }
         }catch (Exception e){
             log.error("The living Ratio task is failed");
             platformTransactionManager.rollback(status);
             throw new RuntimeException(e);
         }finally {
-            platformTransactionManager.commit(status);
             if (fairLock.isLocked()){
                 fairLock.unlock();
             }
