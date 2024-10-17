@@ -58,7 +58,7 @@ contracts:
       address: '0x13a23f40eB6e2EAF0299FE7BAD40F876ecf3F277'
       enabled: true
 
-    - name: 'NodePoolVault'
+    - name: 'NodePoolVaultProxy'
       address: '0xe80e4997CD309Fe95Bf94127f5E9D1D156961c56'
       enabled: true
 
