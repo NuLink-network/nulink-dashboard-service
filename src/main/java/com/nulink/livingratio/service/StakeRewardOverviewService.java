@@ -10,6 +10,7 @@ import com.nulink.livingratio.repository.GridStakeRewardRepository;
 import com.nulink.livingratio.utils.RedisService;
 import com.nulink.livingratio.utils.Web3jUtils;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -118,12 +119,10 @@ public class StakeRewardOverviewService {
         StakeRewardOverview stakeRewardOverview;
         try {
             Object redisValue = redisService.get(stakeRewardOverviewCurrentEpoch);
-            if (null != redisValue) {
+            if (ObjectUtils.isNotEmpty(redisValue) && null != redisValue && !"null".equals(redisValue.toString())) {
                 log.info("redisValue:{}", redisValue.toString());
                 String v = redisValue.toString();
                 return JSONObject.parseObject(v, StakeRewardOverview.class);
-            } else {
-                log.info("redisValue is null");
             }
         }catch (Exception e){
             log.error("StakeRewardOverview findCurrentEpoch redis read error", e.fillInStackTrace());
