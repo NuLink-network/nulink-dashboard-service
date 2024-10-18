@@ -217,12 +217,12 @@ public class GridStakingDetailService {
                     }
                     gridStakeRewardRepository.save(gridStakeReward);
                 }
-                platformTransactionManager.commit(status);
             }
         } catch (Exception e){
             log.error("The generate Personal Current Epoch Valid StakeReward task fail, tokenId: {} ", tokenId, e);
             platformTransactionManager.rollback(status);
         } finally {
+            platformTransactionManager.commit(status);
             if (lock.isLocked()){
                 lock.unlock();
             }
@@ -444,12 +444,12 @@ public class GridStakingDetailService {
                     gridStakingDetail.setValid(true);
                 }
                 gridStakingDetailRepository.saveAll(gridStakingDetails);
-                platformTransactionManager.commit(status);
             }
         } catch (Exception e){
             platformTransactionManager.rollback(status);
             log.error("the generate previous epoch stake detail task fail:", e);
         } finally {
+            platformTransactionManager.commit(status);
             if (lock.isLocked()){
                 lock.unlock();
             }
