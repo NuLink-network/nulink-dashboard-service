@@ -5,6 +5,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.nulink.livingratio.entity.GridStakeReward;
 import com.nulink.livingratio.entity.StakeRewardOverview;
+import com.nulink.livingratio.entity.event.CreateNodePoolEvent;
+import com.nulink.livingratio.repository.CreateNodePoolEventRepository;
 import com.nulink.livingratio.repository.StakeRewardOverviewRepository;
 import com.nulink.livingratio.repository.GridStakeRewardRepository;
 import com.nulink.livingratio.utils.RedisService;
@@ -22,6 +24,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -32,20 +35,24 @@ public class StakeRewardOverviewService {
     private final StakeRewardOverviewRepository stakeRewardOverviewRepository;
     private final GridStakeRewardRepository gridStakeRewardRepository;
     private final Web3jUtils web3jUtils;
+    private final CreateNodePoolEventRepository createNodePoolEventRepository;
 
     private final RedisService redisService;
 
     public StakeRewardOverviewService(StakeRewardOverviewRepository stakeRewardOverviewRepository,
                                       GridStakeRewardRepository stakeRewardRepository,
-                                      Web3jUtils web3jUtils, RedisService redisService) {
+                                      Web3jUtils web3jUtils,
+                                      CreateNodePoolEventRepository createNodePoolEventRepository,
+                                      RedisService redisService) {
         this.stakeRewardOverviewRepository = stakeRewardOverviewRepository;
         this.gridStakeRewardRepository = stakeRewardRepository;
         this.web3jUtils = web3jUtils;
+        this.createNodePoolEventRepository = createNodePoolEventRepository;
         this.redisService = redisService;
     }
 
     @Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
+//    @Scheduled(cron = "0 0/1 * * * ? ")
     @Transactional
     public void generateStakeRewardOverview(){
         String previousEpoch = new BigDecimal(web3jUtils.getCurrentEpoch()).subtract(new BigDecimal(1)).toString();
@@ -68,6 +75,12 @@ public class StakeRewardOverviewService {
     }
 
     public StakeRewardOverview getStakeRewardOverview(List<GridStakeReward> stakeRewards, String epoch){
+        Set<String> tokenIds = stakeRewards.stream().map(GridStakeReward::getTokenId).collect(Collectors.toSet());
+        List<CreateNodePoolEvent> events = createNodePoolEventRepository.findAll();
+        // add all node pool
+        events.forEach(event -> {
+            tokenIds.add(event.getTokenId());
+        });
         StakeRewardOverview stakeRewardOverview = new StakeRewardOverview();
         if (!stakeRewards.isEmpty()){
             for (GridStakeReward stakeReward : stakeRewards) {
@@ -77,7 +90,7 @@ public class StakeRewardOverviewService {
             }
             stakeRewardOverview.setValidStakingAmount(sum(stakeRewards.stream().map(GridStakeReward::getValidStakingAmount).filter(StringUtils::isNotEmpty).collect(Collectors.toList())));
             stakeRewardOverview.setTotalStakingAmount(sum(stakeRewards.stream().map(GridStakeReward::getStakingAmount).filter(StringUtils::isNotEmpty).collect(Collectors.toList())));
-            stakeRewardOverview.setTotalStakingNodes(String.valueOf(stakeRewards.size()));
+            stakeRewardOverview.setTotalStakingNodes(String.valueOf(tokenIds.size()));
         }
         List<StakeRewardOverview> epochBefore = stakeRewardOverviewRepository.findAllByEpochBefore(Integer.parseInt(epoch));
         List<String> reward = epochBefore.stream().map(StakeRewardOverview::getCurrentEpochReward).filter(StringUtils::isNotEmpty).collect(Collectors.toList());

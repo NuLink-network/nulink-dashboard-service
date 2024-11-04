@@ -2,6 +2,8 @@ controller:
   enabled: false
 scheduling:
   enabled: true
+healthCheck:
+  enabled: false
 
 server:
   port: 8092

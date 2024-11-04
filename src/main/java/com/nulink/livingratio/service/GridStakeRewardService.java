@@ -194,8 +194,8 @@ public class GridStakeRewardService {
     }*/
 
     @Async
-    @Scheduled(cron = "0 0 * * * ?")
-    //@Scheduled(cron = "0 0/5 * * * ? ")
+    //@Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(cron = "0 0/5 * * * ? ")
     //@Scheduled(cron = "0 0/30 * * * ? ")
     public void livingRatio() {
         synchronized (livingRatioTaskKey) {
@@ -298,6 +298,21 @@ public class GridStakeRewardService {
             return lastBond.getOperator().equals("0x0000000000000000000000000000000000000000");
         } else {
             return true;
+        }
+    }
+
+    @Async
+    @Scheduled(cron = "0 0/1 * * * ? ")
+    public void testRedisConnection(){
+        try {
+            Object result = redisTemplate.opsForValue().get("testConnection");
+            if (result == null) {
+                log.info("---------------------------Redis connection successful!");
+            } else {
+                log.error("-----------------Redis connection failed: key exists.");
+            }
+        } catch (Exception e) {
+            log.error("-----------------Redis connection failed: {}", e.getMessage());
         }
     }
 
@@ -786,6 +801,7 @@ public class GridStakeRewardService {
                 }
             }
             result.put("size", String.valueOf(all.size()));
+            log.info("all size:{}", all.size());
             countStakeReward(all, epoch);
             List<GridStakeReward> stakeRewards = pageHelper(pageSize, pageNum, orderBy, sortDirection, all);
             String pvoStr = JSONObject.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
@@ -793,6 +809,7 @@ public class GridStakeRewardService {
             cacheResults(cacheKey, countCacheKey, stakeRewards, all.size());
         }catch (Exception e){
             log.error("Error reading from database", e.fillInStackTrace());
+            throw new RuntimeException("Error reading from database", e.fillInStackTrace());
         }
         redisService.del(stakeRewardQueryKey);
         return result;

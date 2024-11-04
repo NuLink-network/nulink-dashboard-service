@@ -7,6 +7,7 @@ import com.nulink.livingratio.telegram.TelegramBotClient;
 import com.nulink.livingratio.utils.Web3jUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,9 +23,12 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@ConditionalOnProperty(value = "healthCheck.enabled")
 public class HealthCheckService {
 
     @Value("${web3j.client-address.official}")
@@ -46,29 +50,31 @@ public class HealthCheckService {
     }
 
     /**
-     * 检测设置在线率任务
+     * check setLivingRatio task
      */
     @Async
-    //@Scheduled(cron = "0 0/5 * * * ? ")
+    @Scheduled(cron = "0 0/1 * * * ? ")
     public void checkStakingReward(){
         String currentEpoch = web3jUtils.getCurrentEpoch();
         String previousEpoch = new BigDecimal(currentEpoch).subtract(new BigDecimal(1)).toString();
         String startTime = web3jUtils.getEpochStartTime(currentEpoch);
         if (System.currentTimeMillis() > (Long.parseLong(startTime) * 1000 + 15 * 60 * 1000)){
             List<SetLivingRatio> livingRatios = setLivingRatioService.findByEpoch(previousEpoch);
-            if (!ObjectUtils.isEmpty(livingRatios)){
-                LocalDateTime currentTime = LocalDateTime.now(ZoneId.of("Asia/Shanghai"));
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                log.info("Staking Service Epoch " + previousEpoch + " Set living ratio task is failed, Problem started at " + currentTime.format(formatter));
-                telegramBotClient.sendMessage("Project: Staking-Service \n" +
-                        "Problem Title: Epoch " + previousEpoch + " Set living ratio task is failed \n" +
-                        "Problem started at " + currentTime.format(formatter));
+            for (SetLivingRatio livingRatio : livingRatios) {
+                if (!livingRatio.isSetLivingRatio()){
+                    LocalDateTime currentTime = LocalDateTime.now(ZoneId.of("Asia/Shanghai"));
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    log.info("Staking Service Epoch " + previousEpoch + "token id" + livingRatio.getTokenId() + " Set living ratio task is failed, Problem started at " + currentTime.format(formatter));
+                    telegramBotClient.sendMessage("Project: Staking-Service \n" +
+                            "Problem Title: Epoch " + previousEpoch + "token id" + livingRatio.getTokenId() + " Set living ratio task is failed \n" +
+                            "Problem started at " + currentTime.format(formatter));
+                }
             }
         }
     }
 
     @Async
-    //@Scheduled(cron = "0 0/5 * * * ? ")
+    @Scheduled(cron = "0 0/5 * * * ? ")
     public void switchRpcUrl(){
         BigInteger blockNumber = getBlockNumber();
         List<ContractOffset> all = contractOffsetRepository.findAll();
@@ -82,7 +88,7 @@ public class HealthCheckService {
     }
 
     @Async
-    //@Scheduled(cron = "0 0/10 * * * ? ")
+    @Scheduled(cron = "0 0/10 * * * ? ")
     public void checkScannerBlockNumber(){
         BigInteger blockNumber = getBlockNumber();
         List<ContractOffset> all = contractOffsetRepository.findAll();
@@ -102,14 +108,14 @@ public class HealthCheckService {
     }
 
     /**
-     * 检测管理员钱包余额
+     * check balance
      */
     @Async
-    //@Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(cron = "0 0 * * * ?")
     public void checkBalance(){
         BigInteger balance = web3jUtils.getBalance();
         BigDecimal divide = new BigDecimal(balance).divide(new BigDecimal("1000000000000000000"), 4, RoundingMode.HALF_UP);
-        if (divide.compareTo(new BigDecimal(5)) < 0){
+        if (divide.compareTo(new BigDecimal(1)) < 0){
             LocalDateTime currentTime = LocalDateTime.now(ZoneId.of("Asia/Shanghai"));
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             System.out.println("The manager's wallet balance is " + divide + "BNB, please recharge. Problem started at " + currentTime.format(formatter));
