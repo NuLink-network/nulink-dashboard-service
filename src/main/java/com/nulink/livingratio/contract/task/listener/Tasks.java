@@ -35,7 +35,7 @@ public class Tasks {
     BlockEventListener blockEventDelayListener60;
 
     @Async
-    @Scheduled(cron = "0/6 * * * * ?")
+    @Scheduled(cron = "0/5 * * * * ?")
     public void scanBlockEvent() {
 
         synchronized (blockListenerTaskKey) {
@@ -86,7 +86,7 @@ public class Tasks {
     }
 
     @Async
-    @Scheduled(cron = "0/6 * * * * ?")
+    @Scheduled(cron = "0/7 * * * * ?")
     public void scanBlockEventDelay60() {
 
         synchronized (blockListenerDelay60TaskKey) {
