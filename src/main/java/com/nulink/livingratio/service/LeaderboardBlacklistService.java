@@ -20,7 +20,7 @@ public class LeaderboardBlacklistService {
         this.leaderboardBlacklistRepository = leaderboardBlacklistRepository;
     }
 
-    @Transactional
+    ////@Transactional
     public void create(LeaderboardBlacklist leaderboardBlacklist){
         if (leaderboardBlacklist.getStakingProvider() != null) {
             String lowerCase = leaderboardBlacklist.getStakingProvider().toLowerCase();
@@ -45,7 +45,7 @@ public class LeaderboardBlacklistService {
         return leaderboardBlacklistRepository.findAllByDeleted(deleted);
     }
 
-    @Transactional
+    ////@Transactional
     public void delete(String stakingProvider){
         LeaderboardBlacklist blacklist = leaderboardBlacklistRepository.findByStakingProvider(stakingProvider);
         blacklist.setDeleted(true);

@@ -62,7 +62,7 @@ public class PersonalStakingOverviewService {
         return personalStakingOverviewRepository.findByTokenIdAndUserAddress(tokenId, userAddress);
     }
 
-    @Transactional()
+    @Transactional
     public void handleStakingEvent(NodePoolEvents nodePoolEvents) {
         String user = nodePoolEvents.getUser();
         String tokenId = nodePoolEvents.getTokenId();

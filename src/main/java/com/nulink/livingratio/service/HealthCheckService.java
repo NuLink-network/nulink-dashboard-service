@@ -52,7 +52,7 @@ public class HealthCheckService {
     /**
      * check setLivingRatio task
      */
-    @Async
+    //@Async
     @Scheduled(cron = "0 0/1 * * * ? ")
     public void checkStakingReward(){
         String currentEpoch = web3jUtils.getCurrentEpoch();
@@ -73,7 +73,7 @@ public class HealthCheckService {
         }
     }
 
-    @Async
+    //@Async
     @Scheduled(cron = "0 0/5 * * * ? ")
     public void switchRpcUrl(){
         BigInteger blockNumber = getBlockNumber();
@@ -87,7 +87,7 @@ public class HealthCheckService {
         }
     }
 
-    @Async
+    //@Async
     @Scheduled(cron = "0 0/10 * * * ? ")
     public void checkScannerBlockNumber(){
         BigInteger blockNumber = getBlockNumber();
@@ -110,7 +110,7 @@ public class HealthCheckService {
     /**
      * check balance
      */
-    @Async
+    //@Async
     @Scheduled(cron = "0 0 * * * ?")
     public void checkBalance(){
         BigInteger balance = web3jUtils.getBalance();

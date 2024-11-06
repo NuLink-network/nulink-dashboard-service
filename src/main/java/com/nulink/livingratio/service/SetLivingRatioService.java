@@ -62,9 +62,9 @@ public class SetLivingRatioService {
         return setLivingRatioRepository.findByEpoch(epoch);
     }
 
-    @Async
+    //@Async
     @Scheduled(cron = "0 0/1 * * * ? ")
-    @Transactional
+    //@Transactional
     public void setUnLivingRatio(){
         synchronized (setUnLivingRatioTaskKey) {
             if (SetLivingRatioService.lockSetUnLivingRatioTaskFlag) {
@@ -107,7 +107,7 @@ public class SetLivingRatioService {
         }
     }
 
-    @Async
+    //@Async
     @Scheduled(cron = "0 0/1 * * * ? ")
     @Transactional
     public void setLivingRatio(){

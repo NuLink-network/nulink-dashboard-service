@@ -28,7 +28,7 @@ public class IncludeUrsulaService {
         this.redisService = redisService;
     }
 
-    @Transactional
+    ////@Transactional
     public void setIncludeUrsula(int ursula){
         try{
             IncludeUrsula includeUrsula = includeUrsulaRepository.findByUrsulaKey(URSULA_KEY);

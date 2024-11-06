@@ -42,7 +42,6 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL5InnoDBDialect
-    open-in-view: false
 
 contracts:
 
@@ -85,6 +84,9 @@ knife4j:
     language: en-US
 
 NULink:
-  porter-service-url: http://47.237.117.37:21106
+  porter-service-url: http://8.219.11.39:9155
   password: x0i60c2N4he6
   chainId: 97
+#logging:
+#  level:
+#    org.hibernate.type.descriptor.sql: TRACE

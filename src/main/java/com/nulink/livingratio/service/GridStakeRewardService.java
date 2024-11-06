@@ -30,13 +30,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.annotation.Resource;
 import java.io.IOException;
@@ -49,9 +44,6 @@ import java.util.stream.Collectors;
 @Log4j2
 @Service
 public class GridStakeRewardService {
-
-    private static final Object countPreviousEpochStakeRewardTaskKey = new Object();
-    private static boolean lockCountPreviousEpochStakeRewardTaskFlag = false;
 
     private final static String PING = "/ping";
 
@@ -73,9 +65,6 @@ public class GridStakeRewardService {
     private final CreateNodePoolEventRepository createNodePoolEventRepository;
     private final EpochFeeRateEventService epochFeeRateEventService;
 
-
-    @Resource
-    private PlatformTransactionManager platformTransactionManager;
     @Autowired
     private StakeRewardOverviewService stakingRewardOverviewService;
 
@@ -104,96 +93,6 @@ public class GridStakeRewardService {
         this.redisTemplate = redisTemplate;
     }
 
-    // When the epoch starts, generate the list of stake rewards for the previous epoch
-    /*@Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
-    public void generateCurrentEpochValidStakeReward(){
-        synchronized (generateCurrentEpochValidStakeRewardTaskKey) {
-            if (GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag) {
-                log.warn("The generate Current Epoch Valid StakeReward task is already in progress");
-                return;
-            }
-            GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = true;
-        }
-
-        log.info("The generate Current Epoch Valid StakeReward task is beginning");
-
-        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
-        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
-
-        try{
-            String currentEpoch = web3jUtils.getCurrentEpoch();
-            if (Integer.valueOf(currentEpoch) < 1){
-                GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-                platformTransactionManager.commit(status);
-                return;
-            }
-            List<GridStakeReward> stakeRewardList = stakeRewardRepository.findAllByEpoch(currentEpoch);
-            if (!stakeRewardList.isEmpty()){
-                GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-                log.info("The Current Epoch Valid StakeReward task has already been executed.");
-                platformTransactionManager.commit(status);
-                return;
-            }
-            if (!checkScanBlockNumber()){
-                GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-                log.info("Waiting for scanning block");
-                platformTransactionManager.commit(status);
-                return;
-            }
-            List<PersonalStaking> validStake = stakeService.findValidStakeByEpoch(currentEpoch);
-            if (validStake.isEmpty()){
-                GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-                platformTransactionManager.commit(status);
-                return;
-            }
-            validStake = validStake.stream().filter(stake -> !stake.getAmount().equals("0")).collect(Collectors.toList());
-            List<Bond> bounds = bondRepository.findLatestBond();
-            HashMap<String, String> bondMap  = new HashMap<>();
-            bounds.forEach(bond -> bondMap.put(bond.getStakingProvider(), bond.getOperator()));
-            List<String> stakingAddress = validStake.stream().map(PersonalStaking::getUser).collect(Collectors.toList());
-
-            List<String> nodeAddresses = findNodeAddress(stakingAddress);
-
-            List<GridStakeReward> stakeRewards = new ArrayList<>();
-
-            Map<String, String> validStakingAmount = validStakingAmountService.findValidStakingAmount(Integer.parseInt(currentEpoch) - 1);
-
-            validStake.forEach(stake -> {
-                GridStakeReward stakeReward = new GridStakeReward();
-                stakeReward.setEpoch(currentEpoch);
-                String stakeUser = stake.getUser();
-                if (bondMap.get(stakeUser) != null) {
-                    stakeReward.setOperator(bondMap.get(stakeUser));
-                    String url = nodeAddresses.get(stakingAddress.indexOf(stakeUser));
-                    if (StringUtils.isNotEmpty(url)){
-                        stakeReward.setIpAddress(getIpAddress(url));
-                    }
-                }
-                stakeReward.setTokenId(stakeUser);
-                stakeReward.setStakingAmount(validStakingAmount.get(stakeUser) == null?"0":validStakingAmount.get(stakeUser));
-                stakeReward.setValidStakingAmount("0");
-                stakeReward.setLivingRatio("0");
-                stakeRewards.add(stakeReward);
-            });
-            stakeRewards.removeIf(stakeReward -> stakeReward.getStakingAmount().equals("0"));
-            stakeRewardRepository.saveAll(stakeRewards);
-            StakeRewardOverview stakeRewardOverview = stakingRewardOverviewService.getStakeRewardOverview(stakeRewards, currentEpoch);
-            stakingRewardOverviewService.saveByEpoch(stakeRewardOverview);
-            platformTransactionManager.commit(status);
-            GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-            log.info("The generate Current Epoch Valid StakeReward task is finish");
-        }catch (Exception e){
-            platformTransactionManager.rollback(status);
-            log.error("The generate Current Epoch Valid StakeReward task fail:" + e);
-            GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-        }finally {
-            GridStakeRewardService.generateCurrentEpochValidStakeRewardTaskFlag = false;
-        }
-    }*/
-
-    @Async
     @Scheduled(cron = "0 0 * * * ?")
     //@Scheduled(cron = "0 0/5 * * * ? ")
     //@Scheduled(cron = "0 0/30 * * * ? ")
@@ -206,10 +105,6 @@ public class GridStakeRewardService {
             GridStakeRewardService.livingRatioTaskFlag = true;
         }
         RLock fairLock = redissonClient.getFairLock("livingRatioTaskKey");
-
-        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
-        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
 
         try{
             if (fairLock.tryLock()) {
@@ -278,11 +173,9 @@ public class GridStakeRewardService {
                 StakeRewardOverview stakeRewardOverview = stakingRewardOverviewService.getStakeRewardOverview(stakeRewards, epoch);
                 stakingRewardOverviewService.saveByEpoch(stakeRewardOverview);
                 log.info("living ratio task finish ...........................");
-                platformTransactionManager.commit(status);
             }
         }catch (Exception e){
             log.error("The living Ratio task is failed");
-            platformTransactionManager.rollback(status);
             throw new RuntimeException(e);
         }finally {
             if (fairLock.isLocked()){
@@ -301,7 +194,6 @@ public class GridStakeRewardService {
         }
     }
 
-    @Async
     @Scheduled(cron = "0 0/1 * * * ? ")
     public void testRedisConnection(){
         try {
@@ -313,50 +205,6 @@ public class GridStakeRewardService {
             }
         } catch (Exception e) {
             log.error("-----------------Redis connection failed: {}", e.getMessage());
-        }
-    }
-
-    @Async
-    //@Scheduled(cron = "0 0/1 * * * ? ")
-    public void countPreviousEpochStakeReward(){
-
-        synchronized (countPreviousEpochStakeRewardTaskKey) {
-            if (GridStakeRewardService.lockCountPreviousEpochStakeRewardTaskFlag) {
-                log.warn("The count Previous Epoch Stake Reward task is already in progress");
-                return;
-            }
-            GridStakeRewardService.lockCountPreviousEpochStakeRewardTaskFlag = true;
-        }
-
-        log.info("The count Previous Epoch Stake Reward task is beginning");
-
-        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
-        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
-
-        try{
-            String previousEpoch = new BigDecimal(web3jUtils.getCurrentEpoch()).subtract(new BigDecimal(1)).toString();
-            List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(previousEpoch);
-            if (stakeRewards.isEmpty()){
-                GridStakeRewardService.lockCountPreviousEpochStakeRewardTaskFlag = false;
-                platformTransactionManager.commit(status);
-                return;
-            }
-            if (null == stakeRewards.get(0).getStakingReward()){
-                countStakeReward(stakeRewards, previousEpoch);
-                stakeRewardRepository.saveAll(stakeRewards);
-            } else {
-                log.info("The count Previous Epoch Stake Reward task has already been executed.");
-            }
-            platformTransactionManager.commit(status);
-            GridStakeRewardService.lockCountPreviousEpochStakeRewardTaskFlag = false;
-            log.info("The count Previous Epoch Stake Reward task is finish");
-        } catch (Exception e){
-            log.error("The count Previous Epoch Stake Reward task is fail", e);
-            platformTransactionManager.rollback(status);
-            GridStakeRewardService.lockCountPreviousEpochStakeRewardTaskFlag = false;
-        } finally {
-            GridStakeRewardService.lockCountPreviousEpochStakeRewardTaskFlag = false;
         }
     }
 

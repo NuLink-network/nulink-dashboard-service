@@ -19,13 +19,8 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import java.math.RoundingMode;
 import java.util.*;
@@ -52,9 +47,6 @@ public class GridStakingDetailService {
 
     private static final Object generatePersonalPreviousEpochStakeRewardTaskKey = new Object();
     private static boolean generatePersonalPreviousEpochStakeRewardTaskTaskFlag = false;
-
-    @Resource
-    private PlatformTransactionManager platformTransactionManager;
 
     private final GridStakingDetailRepository gridStakingDetailRepository;
 
@@ -99,8 +91,7 @@ public class GridStakingDetailService {
         gridStakingDetailRepository.save(gridStakingDetail);
     }
 
-    @Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
+    @Scheduled(fixedDelayString = "120000")
     public void generatePersonalCurrentEpochStakeRewardTask(){
         synchronized (generatePersonalCurrentEpochStakeRewardTaskKey) {
             if (GridStakingDetailService.generatePersonalCurrentEpochStakeRewardTaskTaskFlag) {
@@ -158,9 +149,6 @@ public class GridStakingDetailService {
     public void generatePersonalCurrentEpochValidStakeReward(CreateNodePoolEvent grid, String currentEpoch){
         String tokenId = grid.getTokenId();
         RLock lock = redissonClient.getLock("PersonalCurrentEpochValidStakeReward" + tokenId + currentEpoch);
-        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
-        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
         try{
             if (lock.tryLock()){
                 List<GridStakingDetail> stakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(currentEpoch, tokenId);
@@ -168,6 +156,7 @@ public class GridStakingDetailService {
                     log.info("Grid {} Current Epoch Valid StakeReward task has already been executed.", tokenId);
                     return;
                 }
+                log.info("Start to execute Grid {} Current Epoch Valid StakeReward task", tokenId);
                 // Get the valid personal staking amount
                 List<ValidPersonalStakingAmount> personalStakingAmounts = validPersonalStakingAmountRepository.findAllByTokenIdAndEpochLessThanEqual(tokenId, Integer.parseInt(currentEpoch));
                 /*if (personalStakingAmounts.isEmpty()){
@@ -218,11 +207,10 @@ public class GridStakingDetailService {
                     gridStakeRewardRepository.save(gridStakeReward);
                 }
             }
+            log.info("The generate Personal Current Epoch Valid StakeReward is finish tokenId {}", tokenId);
         } catch (Exception e){
             log.error("The generate Personal Current Epoch Valid StakeReward task fail, tokenId: {} ", tokenId, e);
-            platformTransactionManager.rollback(status);
         } finally {
-            platformTransactionManager.commit(status);
             if (lock.isLocked()){
                 lock.unlock();
             }
@@ -369,8 +357,8 @@ public class GridStakingDetailService {
         return stakingReward.multiply(new BigDecimal(feeRatio)).multiply(new BigDecimal(stakingQuota)).divide(new BigDecimal(10000)).setScale(0, RoundingMode.DOWN).toBigInteger();
     }
 
-    @Async
-    @Scheduled(cron = "0 0/1 * * * ? ")
+    //@Async
+    @Scheduled(fixedDelayString = "120000")
     public void generatePreviousEpochStakeDetailTask(){
         synchronized (generatePersonalPreviousEpochStakeRewardTaskKey) {
             if (GridStakingDetailService.generatePersonalPreviousEpochStakeRewardTaskTaskFlag) {
@@ -425,12 +413,10 @@ public class GridStakingDetailService {
     }
 
     public void updatePreviousEpochStakingReward(String epoch, GridStakeReward gridStakeReward) {
-        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
-        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
         RLock lock = redissonClient.getLock("updatePreviousEpochStakingReward" + epoch + gridStakeReward.getTokenId());
         try {
             if (lock.tryLock()){
+                log.info("the update previous epoch staking reward task is beginning");
                 String tokenId = gridStakeReward.getTokenId();
                 String gridStakingReward = gridStakeReward.getStakingReward();
                 List<GridStakingDetail> gridStakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(epoch, tokenId);
@@ -444,12 +430,11 @@ public class GridStakingDetailService {
                     gridStakingDetail.setValid(true);
                 }
                 gridStakingDetailRepository.saveAll(gridStakingDetails);
+                log.info("the update previous epoch staking reward task is finish");
             }
         } catch (Exception e){
-            platformTransactionManager.rollback(status);
             log.error("the generate previous epoch stake detail task fail:", e);
         } finally {
-            platformTransactionManager.commit(status);
             if (lock.isLocked()){
                 lock.unlock();
             }

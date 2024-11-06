@@ -197,36 +197,35 @@ public class BlockEventListener {
             }
         }
 
-        logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() selectMonitorState : " + start);
+        logger.info("Delay" + delayBlocks + "_ scan block " + " : " + start);
 
         BigInteger now = web3jUtils.getBlockNumber(delayBlocks);
 
         if (start.compareTo(now) >= 0) {
-            logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() return start > now: " + start + " > " + now);
+            logger.info("Delay{}_scan block return, start >= now: {} >= {}", delayBlocks, start, now);
             return;
         }
 
         while (true) {
 
-            logger.info("Delay" + delayBlocks + "_" + "blocksEventScanner run -------------------");
             if (now.compareTo(BigInteger.ZERO) == 0) {
-                logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() return  now is Zero");
+                logger.info("Delay{}_scan block return,  now is Zero", delayBlocks);
                 break;
             }
 
             BigInteger end = start.add(STEP).compareTo(now) > 0 ? now : start.add(STEP);
 
-            logger.info("Delay" + delayBlocks + "_" + "blocksEventScanner run block [" + start + "," + end + "] ");
+            logger.info("Delay{}_blocksEventScanner run block [{},{}] ", delayBlocks, start, end);
 
 
             filterEvents(delayBlocks, start, end);
 
             start = end;
 
-            updateOffset(delayBlocks, end);
+            contractOffsetService.updateOffset(contractOffset, delayBlocks, end);
 
             if (end.compareTo(now) >= 0) {
-                logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() return  end > now: " + end + " > " + now);
+                logger.info("Delay" + delayBlocks + "_" + "scan block return, end >= now: " + end + " >= " + now);
                 break;
             } else {
                 initialize(null, null);
@@ -257,7 +256,7 @@ public class BlockEventListener {
 
             Log log = (Log) logResult.get();
 
-            String contractAddress = log.getAddress().toLowerCase(); //合约地址
+            String contractAddress = log.getAddress().toLowerCase();
 
             String topic = null;
             try {
@@ -278,14 +277,14 @@ public class BlockEventListener {
                 callBackMethod.invoke(null, log);
 
             } catch (Exception e) {
-                logger.info("Delay" + delayBlocks + "_" + "scan all nft albums run() function {} exception: {}", callBackMethod.getName(), e.getMessage());
+                logger.info("Delay" + delayBlocks + "_" + "scan block function {} exception: {}", callBackMethod.getName(), e.getMessage());
             }
 
         }
 
     }
 
-    private void updateOffset(Integer delayBlocks, BigInteger offset) {
+    /*private void updateOffset(Integer delayBlocks, BigInteger offset) {
 
         String contractAddress = "Delay" + delayBlocks + "_" + BLOCK_CONTRACT_FLAG;
 
@@ -298,6 +297,6 @@ public class BlockEventListener {
         }
         contractOffset.setBlockOffset(offset);
         contractOffsetService.update(contractOffset);
-    }
+    }*/
 
 }

@@ -19,9 +19,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -67,26 +64,26 @@ public class StakingRewardLeaderboardService {
         }
 
         log.info("The update leaderboard task task is beginning");
-        DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
+        /*DefaultTransactionDefinition transactionDefinition= new DefaultTransactionDefinition();
         transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);
+        TransactionStatus status = platformTransactionManager.getTransaction(transactionDefinition);*/
         try{
             String previousEpoch = new BigDecimal(web3jUtils.getCurrentEpoch()).subtract(new BigDecimal(1)).toString();
             int i = stakingRewardLeaderboardRepository.countByEpoch(previousEpoch);
             if (i > 0){
-                platformTransactionManager.commit(status);
+                //platformTransactionManager.commit(status);
                 StakingRewardLeaderboardService.updateLeaderboardTaskFlag = false;
                 return;
             }
             List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(previousEpoch);
             if (stakeRewards.isEmpty()){
-                platformTransactionManager.commit(status);
+                //platformTransactionManager.commit(status);
                 StakingRewardLeaderboardService.updateLeaderboardTaskFlag = false;
                 log.info("The update leaderboard task task break, stakeRewards list is empty.");
                 return;
             }
             if (null == stakeRewards.get(0).getStakingReward()){
-                platformTransactionManager.commit(status);
+                //platformTransactionManager.commit(status);
                 StakingRewardLeaderboardService.updateLeaderboardTaskFlag = false;
                 log.info("Waiting for The count Previous Epoch Stake Reward task finish");
                 return;
@@ -146,12 +143,12 @@ public class StakingRewardLeaderboardService {
 
             }
             stakingRewardLeaderboardRepository.saveAll(leaderboardList);
-            platformTransactionManager.commit(status);
+            //platformTransactionManager.commit(status);
             StakingRewardLeaderboardService.updateLeaderboardTaskFlag = false;
             log.info("The update leaderboard task task is finish");
         } catch (Exception e){
             log.error("The update leaderboard task task is fail", e);
-            platformTransactionManager.rollback(status);
+            //platformTransactionManager.rollback(status);
             StakingRewardLeaderboardService.updateLeaderboardTaskFlag = false;
         }
     }

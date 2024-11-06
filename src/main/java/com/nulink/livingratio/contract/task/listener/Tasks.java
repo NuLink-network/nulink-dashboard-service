@@ -34,8 +34,7 @@ public class Tasks {
     @Autowired
     BlockEventListener blockEventDelayListener60;
 
-    @Async
-    @Scheduled(cron = "0/5 * * * * ?")
+    @Scheduled(cron = "0/10 * * * * ?")
     public void scanBlockEvent() {
 
         synchronized (blockListenerTaskKey) {
@@ -51,7 +50,8 @@ public class Tasks {
             blockEventListener.start(0, null, null);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred during the execution of the blockchain event scanning task.", e);
+            throw new RuntimeException(e);
         }
 
         Tasks.lockBlockListenerTaskFlag = false;
@@ -59,8 +59,7 @@ public class Tasks {
         logger.info("The Delay0 blockchain event scanning task has concluded.");
     }
 
-    @Async
-    @Scheduled(cron = "0/6 * * * * ?")
+    @Scheduled(cron = "0/13 * * * * ?")
     public void scanBlockEventDelay30() {
 
         synchronized (blockListenerDelay30TaskKey) {
@@ -71,13 +70,14 @@ public class Tasks {
             Tasks.lockBlockListenerDelay30TaskFlag = true;
         }
 
-        logger.info("Initiate the execution of the Delay50 blockchain event scanning task.");
+        logger.info("Initiate the execution of the Delay 30 blockchain event scanning task.");
         try {
 
             blockEventDelayListener30.start(30, null, null);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred during the execution of the Delay30 blockchain event scanning task.", e);
+            throw new RuntimeException(e);
         }
 
         Tasks.lockBlockListenerDelay30TaskFlag = false;
@@ -85,8 +85,7 @@ public class Tasks {
         logger.info("The Delay30 blockchain event scanning task has concluded.");
     }
 
-    @Async
-    @Scheduled(cron = "0/7 * * * * ?")
+    @Scheduled(cron = "0/15 * * * * ?")
     public void scanBlockEventDelay60() {
 
         synchronized (blockListenerDelay60TaskKey) {
@@ -99,13 +98,12 @@ public class Tasks {
 
         logger.info("Initiate the execution of the Delay60 blockchain event scanning task.");
         try {
-            Set<String> disableTaskNames = new HashSet<>();
-            disableTaskNames.add("NodePoolStakingManager");
-            disableTaskNames.add("NodePoolFactory");
-            blockEventDelayListener60.start(60, null, disableTaskNames);
+
+            blockEventDelayListener60.start(60, null, null);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred during the execution of the Delay60 blockchain event scanning task.", e);
+            throw new RuntimeException(e);
         }
 
         Tasks.lockBlockListenerDelay60TaskFlag = false;
