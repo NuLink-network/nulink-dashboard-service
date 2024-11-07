@@ -151,12 +151,12 @@ public class GridStakingDetailService {
         RLock lock = redissonClient.getLock("PersonalCurrentEpochValidStakeReward" + tokenId + currentEpoch);
         try{
             if (lock.tryLock()){
+                log.info("Start to execute Grid {} Current Epoch Valid StakeReward task", tokenId);
                 List<GridStakingDetail> stakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(currentEpoch, tokenId);
                 if (!stakingDetails.isEmpty()){
                     log.info("Grid {} Current Epoch Valid StakeReward task has already been executed.", tokenId);
                     return;
                 }
-                log.info("Start to execute Grid {} Current Epoch Valid StakeReward task", tokenId);
                 // Get the valid personal staking amount
                 List<ValidPersonalStakingAmount> personalStakingAmounts = validPersonalStakingAmountRepository.findAllByTokenIdAndEpochLessThanEqual(tokenId, Integer.parseInt(currentEpoch));
                 /*if (personalStakingAmounts.isEmpty()){
@@ -207,7 +207,7 @@ public class GridStakingDetailService {
                     gridStakeRewardRepository.save(gridStakeReward);
                 }
             }
-            log.info("The generate Personal Current Epoch Valid StakeReward is finish tokenId {}", tokenId);
+            log.info("The generate Personal Current Epoch Valid StakeReward is finish, tokenId {}", tokenId);
         } catch (Exception e){
             log.error("The generate Personal Current Epoch Valid StakeReward task fail, tokenId: {} ", tokenId, e);
         } finally {
@@ -416,21 +416,25 @@ public class GridStakingDetailService {
         RLock lock = redissonClient.getLock("updatePreviousEpochStakingReward" + epoch + gridStakeReward.getTokenId());
         try {
             if (lock.tryLock()){
-                log.info("the update previous epoch staking reward task is beginning");
                 String tokenId = gridStakeReward.getTokenId();
+                log.info("the update previous epoch staking reward task is beginning， tokenId: {}", tokenId);
                 String gridStakingReward = gridStakeReward.getStakingReward();
                 List<GridStakingDetail> gridStakingDetails = gridStakingDetailRepository.findByEpochAndTokenId(epoch, tokenId);
                 if (!gridStakingDetails.isEmpty()){
                     if (gridStakingDetails.get(0).isValid()) {
+                        log.info("the update previous epoch staking reward task is finish， tokenId: {}, already update", tokenId);
                         return;
                     }
+                } else {
+                    log.info("the update previous epoch staking reward task is finish， tokenId: {}, not found", tokenId);
+                    return;
                 }
                 for (GridStakingDetail gridStakingDetail : gridStakingDetails) {
                     gridStakingDetail.setStakingReward(calcPersonalStakingReward(gridStakingReward, gridStakeReward.getCurrentFeeRatio(), gridStakingDetail.getStakingQuota()));
                     gridStakingDetail.setValid(true);
                 }
                 gridStakingDetailRepository.saveAll(gridStakingDetails);
-                log.info("the update previous epoch staking reward task is finish");
+                log.info("the update previous epoch staking reward task is finish, tokenId: {}", tokenId);
             }
         } catch (Exception e){
             log.error("the generate previous epoch stake detail task fail:", e);

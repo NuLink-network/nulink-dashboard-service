@@ -39,7 +39,7 @@ public class Tasks {
 
         synchronized (blockListenerTaskKey) {
             if (Tasks.lockBlockListenerTaskFlag) {
-                logger.warn("The blockchain event scanning task is already in progress");
+                logger.warn("The Delay0 blockchain event scanning task is already in progress");
                 return;
             }
             Tasks.lockBlockListenerTaskFlag = true;
@@ -48,15 +48,14 @@ public class Tasks {
         logger.info("Commence the execution of the blockchain event scanning task.");
         try {
             blockEventListener.start(0, null, null);
-
+            logger.info("The Delay0 blockchain event scanning task has concluded.");
         } catch (Exception e) {
             logger.error("An error occurred during the execution of the blockchain event scanning task.", e);
             throw new RuntimeException(e);
+        } finally {
+            Tasks.lockBlockListenerTaskFlag = false;
         }
 
-        Tasks.lockBlockListenerTaskFlag = false;
-
-        logger.info("The Delay0 blockchain event scanning task has concluded.");
     }
 
     @Scheduled(cron = "0/13 * * * * ?")
@@ -75,14 +74,14 @@ public class Tasks {
 
             blockEventDelayListener30.start(30, null, null);
 
+            logger.info("The Delay30 blockchain event scanning task has concluded.");
         } catch (Exception e) {
             logger.error("An error occurred during the execution of the Delay30 blockchain event scanning task.", e);
             throw new RuntimeException(e);
+        } finally {
+            Tasks.lockBlockListenerDelay30TaskFlag = false;
         }
 
-        Tasks.lockBlockListenerDelay30TaskFlag = false;
-
-        logger.info("The Delay30 blockchain event scanning task has concluded.");
     }
 
     @Scheduled(cron = "0/15 * * * * ?")
@@ -100,15 +99,13 @@ public class Tasks {
         try {
 
             blockEventDelayListener60.start(60, null, null);
-
+            logger.info("The Delay60 blockchain event scanning task has concluded.");
         } catch (Exception e) {
             logger.error("An error occurred during the execution of the Delay60 blockchain event scanning task.", e);
             throw new RuntimeException(e);
+        } finally {
+            Tasks.lockBlockListenerDelay60TaskFlag = false;
         }
-
-        Tasks.lockBlockListenerDelay60TaskFlag = false;
-
-        logger.info("The Delay60 blockchain event scanning task has concluded.");
     }
 
 }
