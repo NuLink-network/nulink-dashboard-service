@@ -81,12 +81,6 @@ public class SetLivingRatioService {
                 if (livingRatios.isEmpty()){
                     List<GridStakeReward> stakeRewards = stakeRewardRepository.findAllByEpoch(previousEpoch);
                     for (GridStakeReward stakeReward : stakeRewards) {
-                        if (StringUtils.isBlank(stakeReward.getStakingReward())){
-                            continue;
-                        }
-                        if (BigInteger.ZERO.compareTo(new BigInteger(stakeReward.getStakingReward())) == 0){
-                            continue;
-                        }
                         SetLivingRatio setLivingRatio = new SetLivingRatio();
                         setLivingRatio.setEpoch(previousEpoch);
                         setLivingRatio.setTokenId(stakeReward.getTokenId());
@@ -122,15 +116,18 @@ public class SetLivingRatioService {
         try {
             if (setLivingRatioTask.tryLock()){
                 log.info("The set lstaking reward task is starting ...");
-                SetLivingRatio setLivingRatio = setLivingRatioRepository.findFirstBySetLivingRatioAndTransactionFailOrderById(false, false);
-                if (null != setLivingRatio) {
+                List<SetLivingRatio> setLivingRatios = setLivingRatioRepository.findAllBySetLivingRatioAndTransactionFailOrderById(false, false);
+                for (SetLivingRatio setLivingRatio : setLivingRatios) {
                     String epoch = setLivingRatio.getEpoch();
                     String tokenId = setLivingRatio.getTokenId();
+                    log.info("set living ratio epoch:{}, tokenId: {}", epoch, tokenId);
                     GridStakeReward gridStakeReward = stakeRewardRepository.findByEpochAndTokenId(epoch, tokenId);
                     String txHash;
                     int j = 0;
                     do {
-                        txHash = web3jUtils.setStakingReward(epoch, tokenId, gridStakeReward.getStakingReward(), gridStakeReward.getStakingAmount());
+                        txHash = web3jUtils.setStakingReward(epoch, tokenId,
+                                StringUtils.isBlank(gridStakeReward.getStakingReward()) ? "0" :gridStakeReward.getStakingReward(),
+                                gridStakeReward.getStakingAmount());
                         j++;
                         try {
                             TimeUnit.MILLISECONDS.sleep(10000);

@@ -12,6 +12,8 @@ public interface SetLivingRatioRepository extends PagingAndSortingRepository<Set
 
     SetLivingRatio findFirstBySetLivingRatioAndTransactionFailOrderById(boolean set, boolean error);
 
+    List<SetLivingRatio> findAllBySetLivingRatioAndTransactionFailOrderById(boolean set, boolean error);
+
     List<SetLivingRatio> findAllBySetLivingRatioOrderByCreateTimeDesc(boolean setLivingRatio);
 
     List<SetLivingRatio> findByEpoch(String epoch);

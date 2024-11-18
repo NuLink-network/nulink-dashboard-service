@@ -94,7 +94,7 @@ public class GridStakeRewardService {
     }
 
     @Scheduled(cron = "0 0 * * * ?")
-    //@Scheduled(cron = "0 0/5 * * * ? ")
+    @Scheduled(cron = "0 0/5 * * * ? ")
     //@Scheduled(cron = "0 0/30 * * * ? ")
     public void livingRatio() {
         synchronized (livingRatioTaskKey) {
@@ -217,6 +217,9 @@ public class GridStakeRewardService {
             }
             String totalValidStakingAmount = sum(stakeRewards.stream().map(GridStakeReward::getValidStakingAmount).filter(Objects::nonNull).collect(Collectors.toList()));
             String currentEpochReward = web3jUtils.getEpochReward(epoch);
+            if (StringUtils.isBlank(currentEpochReward)){
+                throw new RuntimeException("current epoch reward is null");
+            }
             for (GridStakeReward stakeReward : stakeRewards) {
                 if (new BigDecimal(totalValidStakingAmount).compareTo(BigDecimal.ZERO) > 0){
                     String validStakingQuota = new BigDecimal(stakeReward.getValidStakingAmount()).divide(new BigDecimal(totalValidStakingAmount),6, RoundingMode.HALF_UP).toString();
@@ -651,16 +654,20 @@ public class GridStakeRewardService {
             result.put("size", String.valueOf(all.size()));
             log.info("all size:{}", all.size());
             countStakeReward(all, epoch);
+            log.info("count staking reward finish ...");
             List<GridStakeReward> stakeRewards = pageHelper(pageSize, pageNum, orderBy, sortDirection, all);
             String pvoStr = JSONObject.toJSONString(stakeRewards, SerializerFeature.WriteNullStringAsEmpty);
             result.put("stakeRewards", pvoStr);
             cacheResults(cacheKey, countCacheKey, stakeRewards, all.size());
+            log.info("redis write finish ...");
+            log.info(pvoStr);
+            return result;
         }catch (Exception e){
             log.error("Error reading from database", e.fillInStackTrace());
             throw new RuntimeException("Error reading from database", e.fillInStackTrace());
+        } finally {
+            redisService.del(stakeRewardQueryKey);
         }
-        redisService.del(stakeRewardQueryKey);
-        return result;
     }
 
     private void cacheResults(String cacheKey, String countCacheKey, List<GridStakeReward> stakeRewards, long count) {
