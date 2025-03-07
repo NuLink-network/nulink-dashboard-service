@@ -6,9 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.util.ObjectUtils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Data
@@ -49,13 +49,11 @@ public class ContractsConfig {
 
     }
 
-    private Map<String, ContractInfo> mapProps = null;
+    private static Map<String, ContractInfo> mapProps = new ConcurrentHashMap<>();
 
     public Map<String, ContractInfo> getContractInfoMap() {
 
         if (ObjectUtils.isEmpty(mapProps)) {
-
-            mapProps = new HashMap<>(contractList.size());
 
             for (ContractInfo contractInfo : contractList) {
                 mapProps.put(contractInfo.getName(), contractInfo);
