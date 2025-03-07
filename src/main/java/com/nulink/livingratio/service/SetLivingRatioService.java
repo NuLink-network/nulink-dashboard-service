@@ -115,7 +115,7 @@ public class SetLivingRatioService {
         RLock setLivingRatioTask = redissonClient.getLock("setLivingRatioTask");
         try {
             if (setLivingRatioTask.tryLock()){
-                log.info("The set lstaking reward task is starting ...");
+                log.info("The set staking reward task is starting ...");
                 List<SetLivingRatio> setLivingRatios = setLivingRatioRepository.findAllBySetLivingRatioAndTransactionFailOrderById(false, false);
                 for (SetLivingRatio setLivingRatio : setLivingRatios) {
                     String epoch = setLivingRatio.getEpoch();

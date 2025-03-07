@@ -119,7 +119,7 @@ public class Web3jUtils {
         credentials = Credentials.create(getPrivateKey(keystoreContent, password));
         String rpcUrl = rpcConfig.getRpcUrl();
         if (StringUtils.isEmpty(rpcUrl)){
-            rpcUrl = blockpiRpc;
+            rpcUrl = ankrRpc;
             rpcConfig.setRpcUrl(blockpiRpc);
         }
         logger.info("Init Web3j instance ...");

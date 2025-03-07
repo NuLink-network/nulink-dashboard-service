@@ -3,6 +3,7 @@ package com.nulink.livingratio.contract.task.listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -26,12 +27,15 @@ public class Tasks {
     private static boolean lockBlockListenerDelay60TaskFlag = false;
 
     @Autowired
+    @Qualifier("blockEventListenerDelay0") //需要对应ListenerConfig中的Bean的名称
     BlockEventListener blockEventListener;
 
     @Autowired
+    @Qualifier("blockEventDelayListener30")//需要对应ListenerConfig中的Bean的名称
     BlockEventListener blockEventDelayListener30;
 
     @Autowired
+    @Qualifier("blockEventDelayListener60")//需要对应ListenerConfig中的Bean的名称
     BlockEventListener blockEventDelayListener60;
 
     @Scheduled(cron = "0/10 * * * * ?")
